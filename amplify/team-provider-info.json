@@ -1,0 +1,30 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-texiapp-dev-05768-authRole",
+      "UnauthRoleArn": "arn:aws:iam::711525442072:role/amplify-texiapp-dev-05768-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::711525442072:role/amplify-texiapp-dev-05768-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-texiapp-dev-05768-deployment",
+      "UnauthRoleName": "amplify-texiapp-dev-05768-unauthRole",
+      "StackName": "amplify-texiapp-dev-05768",
+      "StackId": "arn:aws:cloudformation:us-east-1:711525442072:stack/amplify-texiapp-dev-05768/240d9310-0b1a-11f0-82bb-1274fecdafe9",
+      "AmplifyAppId": "d3nlhbzamjkr1r",
+      "AuthTriggerTemplateURL": "https://s3.amazonaws.com/amplify-texiapp-dev-05768-deployment/amplify-cfn-templates/auth/auth-trigger-cloudformation-template.json"
+    },
+    "categories": {
+      "auth": {
+        "texiappc1ff6a3fc1ff6a3f": {}
+      },
+      "function": {
+        "texiappc1ff6a3fc1ff6a3fPostConfirmation": {
+          "deploymentBucketName": "amplify-texiapp-dev-05768-deployment",
+          "s3Key": "amplify-builds/texiappc1ff6a3fc1ff6a3fPostConfirmation-4c2f75676e364b534b76-build.zip"
+        }
+      },
+      "api": {
+        "texiapp": {}
+      }
+    }
+  }
+}
