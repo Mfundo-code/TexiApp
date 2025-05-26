@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { 
   View, 
   Text, 
@@ -8,55 +8,53 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  SafeAreaView
+  SafeAreaView,
+  ActivityIndicator
 } from "react-native";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { API, Auth } from "aws-amplify";
-import { createMessage, listMessages } from "../../graphql/mutations";
+import axios from 'axios';
+import { AuthContext } from "../../App";
 
-const MessagesDrawer = ({ onClose, recipientName, recipientId, rideId }) => {
+
+const MessagesDrawer = ({ onClose, recipientName, rideId }) => {
+    const { authToken } = useContext(AuthContext);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
     const scrollViewRef = useRef();
 
+    const loadMessages = async () => {
+        try {
+            const { data } = await axios.get(
+                `http://192.168.0.137:8000/api/rides/${rideId}/messages/`,
+                { headers: { Authorization: `Token ${authToken}` } }
+            );
+            setMessages(data);
+        } catch (error) {
+            console.error("Error loading messages:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchMessages = async () => {
-            try {
-                const messagesData = await API.graphql({
-                    query: listMessages,
-                    variables: { filter: { rideId: { eq: rideId } } }
-                });
-                setMessages(messagesData.data.listMessages.items);
-            } catch (error) {
-                console.error("Error fetching messages:", error);
-            }
-        };
-        
-        if (rideId) fetchMessages();
-    }, [rideId]);
+        loadMessages();
+        const interval = setInterval(loadMessages, 5000); // Poll every 5s
+        return () => clearInterval(interval);
+    }, []);
 
     const handleSendMessage = async () => {
         if (newMessage.trim() === "") return;
-        
+
         try {
-            const user = await Auth.currentAuthenticatedUser();
-            
-            const messageData = {
-                text: newMessage,
-                senderId: user.attributes.sub,
-                receiverId: recipientId,
-                rideId: rideId
-            };
-
-            const result = await API.graphql({
-                query: createMessage,
-                variables: { input: messageData }
-            });
-
-            setMessages(prev => [...prev, result.data.createMessage]);
+            await axios.post(
+                `http://192.168.0.137:8000/api/rides/${rideId}/messages/`,
+                { content: newMessage },
+                { headers: { Authorization: `Token ${authToken}` } }
+            );
             setNewMessage("");
-            
+            loadMessages();
         } catch (error) {
             console.error("Error sending message:", error);
         }
@@ -77,29 +75,38 @@ const MessagesDrawer = ({ onClose, recipientName, recipientId, rideId }) => {
                 <View style={styles.rightSpacer} />
             </View>
 
-            <ScrollView 
-                style={styles.messagesContainer}
-                contentContainerStyle={styles.messagesContent}
-                ref={scrollViewRef}
-                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-            >
-                {messages.map((message) => (
-                    <View 
-                        key={message.id} 
-                        style={[
-                            styles.messageBubble,
-                            message.senderId === recipientId ? styles.theirMessage : styles.myMessage
-                        ]}
-                    >
-                        <Text style={message.senderId === recipientId ? styles.messageText : styles.myMessageText}>
-                            {message.text}
-                        </Text>
-                        <Text style={styles.messageTime}>
-                            {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                    </View>
-                ))}
-            </ScrollView>
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" />
+                </View>
+            ) : (
+                <ScrollView
+                    style={styles.messagesContainer}
+                    contentContainerStyle={styles.messagesContent}
+                    ref={scrollViewRef}
+                    onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                >
+                    {messages.map((message) => (
+                        <View 
+                            key={message.id} 
+                            style={[
+                                styles.messageBubble,
+                                !message.is_me ? styles.theirMessage : styles.myMessage
+                            ]}
+                        >
+                            <Text style={!message.is_me ? styles.messageText : styles.myMessageText}>
+                                {message.content}
+                            </Text>
+                            <Text style={styles.messageTime}>
+                                {new Date(message.timestamp).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </Text>
+                        </View>
+                    ))}
+                </ScrollView>
+            )}
 
             <KeyboardAvoidingView 
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -155,7 +162,12 @@ const styles = StyleSheet.create({
         marginLeft: 10,
     },
     rightSpacer: {
-        width: 24, // Same as back button width for balance
+        width: 24,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     messagesContainer: {
         flex: 1,

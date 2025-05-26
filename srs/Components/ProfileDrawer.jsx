@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// ProfileDrawer.js
+import React, { useState, useContext } from "react"; // added useContext
 import {
   View,
   Text,
@@ -8,17 +9,15 @@ import {
   Modal,
   ScrollView,
 } from "react-native";
-// Remove direct Auth import and use useAuthenticator hook for signOut.
-import { useAuthenticator } from "@aws-amplify/ui-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AuthContext } from "../../App"; // adjust path if needed
 
 const ProfileDrawer = ({ onClose }) => {
+  const { setIsAuthenticated } = useContext(AuthContext); // get setter
   const [showLoginSecurity, setShowLoginSecurity] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState([]);
-
-  // Get signOut function from the Authenticator context.
-  const { signOut } = useAuthenticator();
 
   const fetchPaymentHistory = () => {
     const payments = [];
@@ -28,9 +27,10 @@ const ProfileDrawer = ({ onClose }) => {
 
   const handleLogout = async () => {
     try {
-      // Use the signOut function from the Authenticator provider.
-      await signOut();
-      Alert.alert("Logout", "You have been logged out successfully!");
+      await AsyncStorage.removeItem("userToken");
+      setIsAuthenticated(false);   // update context
+      onClose();                   // close drawer
+      Alert.alert("Logged Out", "You have been logged out successfully!");
     } catch (error) {
       console.error("Error signing out:", error);
       Alert.alert(
@@ -83,13 +83,14 @@ const ProfileDrawer = ({ onClose }) => {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={showPaymentHistory} transparent={true} animationType="slide">
+      {/* Payment History Modal */}
+      <Modal visible={showPaymentHistory} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalHeader}>Payment History</Text>
             {paymentHistory.length === 0 ? (
               <Text style={styles.modalText}>
-                You've not made any payments yet.
+                You haven't made any payments yet.
               </Text>
             ) : (
               <ScrollView>
@@ -111,7 +112,8 @@ const ProfileDrawer = ({ onClose }) => {
         </View>
       </Modal>
 
-      <Modal visible={showLoginSecurity} transparent={true} animationType="slide">
+      {/* Login & Security Modal */}
+      <Modal visible={showLoginSecurity} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <TouchableOpacity onPress={handleLogout}>
@@ -130,7 +132,8 @@ const ProfileDrawer = ({ onClose }) => {
         </View>
       </Modal>
 
-      <Modal visible={showDeleteConfirmation} transparent={true} animationType="slide">
+      {/* Delete Confirmation Modal */}
+      <Modal visible={showDeleteConfirmation} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalText}>

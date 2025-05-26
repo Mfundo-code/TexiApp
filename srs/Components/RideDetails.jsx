@@ -1,21 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, FlatList, StyleSheet } from 'react-native';
-import axios from 'axios';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  FlatList,
+  StyleSheet
+} from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 
 const RideDetails = ({ onClose }) => {
+  const navigation = useNavigation();
   const [fromText, setFromText] = useState('');
   const [destinationText, setDestinationText] = useState('');
   const [fromSuggestions, setFromSuggestions] = useState([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [destinationCoords, setDestinationCoords] = useState(null);
-  const [selectedMood, setSelectedMood] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('passenger');
 
-  const navigation = useNavigation();
   const GOOGLE_PLACES_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4';
 
+  // Keep all the location handling functions the same as BookForLater
   const reverseGeocode = async (latitude, longitude) => {
     try {
       const response = await axios.get(
@@ -42,7 +51,7 @@ const RideDetails = ({ onClose }) => {
   };
 
   useEffect(() => {
-    const getCurrentLocation = async () => {
+    const getCurrentLocation = () => {
       Geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
@@ -69,14 +78,19 @@ const RideDetails = ({ onClose }) => {
       let suggestions = response.data.predictions;
 
       if (isFrom && currentLocation) {
-        suggestions = [{
-          description: 'Current Location',
-          place_id: 'current',
-          coords: currentLocation
-        }, ...suggestions];
+        suggestions = [
+          {
+            description: 'Current Location',
+            place_id: 'current',
+            coords: currentLocation,
+          },
+          ...suggestions,
+        ];
       }
 
-      isFrom ? setFromSuggestions(suggestions) : setDestinationSuggestions(suggestions);
+      isFrom
+        ? setFromSuggestions(suggestions)
+        : setDestinationSuggestions(suggestions);
     } catch (error) {
       console.error('Error fetching places:', error);
     }
@@ -106,10 +120,6 @@ const RideDetails = ({ onClose }) => {
   };
 
   const handleConfirmRide = () => {
-    if (!selectedMood) {
-      Alert.alert('Error', 'Please select driver or passenger');
-      return;
-    }
     if (!currentLocation || !destinationCoords) {
       Alert.alert('Error', 'Please select valid locations');
       return;
@@ -126,7 +136,7 @@ const RideDetails = ({ onClose }) => {
         latitude: destinationCoords.latitude,
         longitude: destinationCoords.longitude
       },
-      mood: selectedMood
+      rideType: selectedRole === 'driver' ? 'offer' : 'request'
     });
   };
 
@@ -134,7 +144,6 @@ const RideDetails = ({ onClose }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Ride Information</Text>
 
-      {/* From Input */}
       <View style={styles.inputContainer}>
         <Text>From:</Text>
         <TextInput
@@ -159,7 +168,6 @@ const RideDetails = ({ onClose }) => {
         )}
       </View>
 
-      {/* Destination Input */}
       <View style={styles.inputContainer}>
         <Text>Destination:</Text>
         <TextInput
@@ -184,38 +192,32 @@ const RideDetails = ({ onClose }) => {
         )}
       </View>
 
-      {/* Mood Selection */}
-      <View style={styles.inputContainer}>
-        <Text>You are:</Text>
-        <View style={styles.moodContainer}>
-          <TouchableOpacity 
-            style={[
-              styles.moodButton, 
-              selectedMood === 'driver' && styles.selectedMood
-            ]}
-            onPress={() => setSelectedMood('driver')}
-          >
-            <Text style={styles.moodText}>🚗 Driver</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
-              styles.moodButton, 
-              selectedMood === 'passenger' && styles.selectedMood
-            ]}
-            onPress={() => setSelectedMood('passenger')}
-          >
-            <Text style={styles.moodText}>👤 Passenger</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.roleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            selectedRole === 'driver' && styles.selectedRole
+          ]}
+          onPress={() => setSelectedRole('driver')}
+        >
+          <Text style={styles.roleText}>🚗 Driver</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            selectedRole === 'passenger' && styles.selectedRole
+          ]}
+          onPress={() => setSelectedRole('passenger')}
+        >
+          <Text style={styles.roleText}>👤 Passenger</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Confirm Ride Button */}
       <TouchableOpacity style={styles.button} onPress={handleConfirmRide}>
         <Text style={styles.buttonText}>Confirm Ride</Text>
       </TouchableOpacity>
 
-      {/* Close Button */}
       <View style={styles.closeButtonContainer}>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
           <Text style={styles.closeText}>Close</Text>
@@ -225,6 +227,7 @@ const RideDetails = ({ onClose }) => {
   );
 };
 
+// Keep the same styles as BookForLater
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -283,18 +286,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#ededed',
     borderRadius: 10,
     paddingVertical: 13,
-    paddingHorizontal: 20, 
+    paddingHorizontal: 20,
   },
   closeText: {
     color: '#007AFF',
     fontWeight: 'bold',
   },
-  moodContainer: {
+  roleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginVertical: 15,
   },
-  moodButton: {
+  roleButton: {
     flex: 1,
     padding: 15,
     backgroundColor: '#f0f0f0',
@@ -302,11 +305,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     alignItems: 'center',
   },
-  selectedMood: {
+  selectedRole: {
     backgroundColor: '#007AFF',
   },
-  moodText: {
+  roleText: {
     fontWeight: 'bold',
+    color: '#000',
   },
 });
 

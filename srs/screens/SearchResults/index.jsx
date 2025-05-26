@@ -4,7 +4,7 @@ import HomeMap from "../../Components/HomeMap";
 import axios from "axios";
 
 const SearchResults = (props) => {
-  const { pickup, dropoff, mood } = props.route.params;
+  const { pickup, dropoff, rideType } = props.route.params;
   const { navigation } = props;
   const [validatedPickup, setValidatedPickup] = useState(null);
   const [validatedDropoff, setValidatedDropoff] = useState(null);
@@ -114,7 +114,7 @@ const SearchResults = (props) => {
     navigation.navigate("RideConfirmation", {
       pickup: validatedPickup,
       dropoff: validatedDropoff,
-      mood: mood
+      rideType: rideType
     });
   };
 

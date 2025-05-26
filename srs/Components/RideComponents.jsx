@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import AntDesign from "react-native-vector-icons/AntDesign";
 
-const RideComponents = ({ onMessagePress, recipientName }) => {
+const RideComponents = ({ onMessagePress, onCallPress, recipientName }) => {
     return (
         <View style={styles.container}>
             <View style={styles.card}>
@@ -16,12 +16,15 @@ const RideComponents = ({ onMessagePress, recipientName }) => {
                         <AntDesign name="message1" size={40} color="#139beb" />
                         <Text style={styles.iconText}>Message</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={styles.iconContainer} onPress={onCallPress}>
+                        <AntDesign name="phone" size={40} color="#139beb" />
+                        <Text style={styles.iconText}>Call</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </View>
     );
 };
-
 const styles = StyleSheet.create({
   container: {
     // Ensures the component occupies the bottom area under the map

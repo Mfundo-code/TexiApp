@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, FlatList, StyleSheet } from 'react-native';
-import { API, Auth } from 'aws-amplify';
-import { createRide } from '../../graphql/mutations';
+import React, { useState, useEffect, useContext } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  FlatList,
+  StyleSheet
+} from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import dayjs from 'dayjs';
 import axios from 'axios';
+import { AuthContext } from '../../App';
 
 const BookForLater = ({ onClose }) => {
+  const { authToken } = useContext(AuthContext);
   const [fromText, setFromText] = useState('');
   const [destinationText, setDestinationText] = useState('');
   const [departureTime, setDepartureTime] = useState(dayjs().format('YYYY-MM-DD HH:mm'));
@@ -14,9 +22,9 @@ const BookForLater = ({ onClose }) => {
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [destinationCoords, setDestinationCoords] = useState(null);
-  const [selectedMood, setSelectedMood] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('passenger');
 
-  const GOOGLE_PLACES_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4';
+  const GOOGLE_PLACES_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4'; // Replace with your actual key
 
   const reverseGeocode = async (latitude, longitude) => {
     try {
@@ -44,7 +52,7 @@ const BookForLater = ({ onClose }) => {
   };
 
   useEffect(() => {
-    const getCurrentLocation = async () => {
+    const getCurrentLocation = () => {
       Geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
@@ -81,7 +89,9 @@ const BookForLater = ({ onClose }) => {
         ];
       }
 
-      isFrom ? setFromSuggestions(suggestions) : setDestinationSuggestions(suggestions);
+      isFrom
+        ? setFromSuggestions(suggestions)
+        : setDestinationSuggestions(suggestions);
     } catch (error) {
       console.error('Error fetching places:', error);
     }
@@ -111,52 +121,40 @@ const BookForLater = ({ onClose }) => {
   };
 
   const handleConfirmRide = async () => {
-    if (!selectedMood) {
-      Alert.alert('Error', 'Please select driver or passenger');
-      return;
-    }
     if (!currentLocation || !destinationCoords || !departureTime) {
       Alert.alert('Error', 'Please select valid locations and set a departure time');
       return;
     }
 
     try {
-      const user = await Auth.currentAuthenticatedUser();
-      
-      const rideInput = {
-        mood: selectedMood.toUpperCase(),
-        pickup: {
-          latitude: currentLocation.latitude,
-          longitude: currentLocation.longitude,
-          address: fromText,
+      const rideType = selectedRole === 'driver' ? 'offer' : 'request';
+
+      await axios.post(
+        'http://192.168.0.137:8000/api/rides/', // Replace with your actual API endpoint
+        {
+          ride_type: rideType,
+          pickup_name: fromText,
+          pickup_lat: currentLocation.latitude,
+          pickup_lng: currentLocation.longitude,
+          dropoff_name: destinationText,
+          dropoff_lat: destinationCoords.latitude,
+          dropoff_lng: destinationCoords.longitude,
+          departure_time: dayjs(departureTime).toISOString(),
         },
-        dropoff: {
-          latitude: destinationCoords.latitude,
-          longitude: destinationCoords.longitude,
-          address: destinationText,
-        },
-        departureTime: dayjs(departureTime).toISOString(),
-        userId: user.attributes.sub,
-        username: user.username,
-        email: user.attributes.email,
-      };
+        {
+          headers: {
+            Authorization: `Token ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      await API.graphql({
-        query: createRide,
-        variables: { input: rideInput }
-      });
-
-      const successMessage = selectedMood === 'driver' 
-        ? "Ride created! We'll connect you with passengers when it's time to go."
-        : "Ride booked! Your driver will contact you when it's time to go.";
-
-      Alert.alert('Success', successMessage, [
-        { text: 'OK', onPress: onClose }
+      Alert.alert('Success', 'Ride created successfully!', [
+        { text: 'OK', onPress: onClose },
       ]);
-      
     } catch (error) {
-      console.error('Error creating ride:', error);
-      Alert.alert('Error', 'Failed to save ride details. Please try again later.');
+      console.error('Create Ride Error:', error);
+      Alert.alert('Error', 'Failed to create ride');
     }
   };
 
@@ -218,33 +216,30 @@ const BookForLater = ({ onClose }) => {
           style={styles.textInput}
           placeholder="YYYY-MM-DD HH:mm"
           value={departureTime}
-          onChangeText={(text) => setDepartureTime(text)}
+          onChangeText={setDepartureTime}
         />
       </View>
 
-      <View style={styles.inputContainer}>
-        <Text>You are:</Text>
-        <View style={styles.moodContainer}>
-          <TouchableOpacity 
-            style={[
-              styles.moodButton, 
-              selectedMood === 'driver' && styles.selectedMood
-            ]}
-            onPress={() => setSelectedMood('driver')}
-          >
-            <Text style={styles.moodText}>🚗 Driver</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
-              styles.moodButton, 
-              selectedMood === 'passenger' && styles.selectedMood
-            ]}
-            onPress={() => setSelectedMood('passenger')}
-          >
-            <Text style={styles.moodText}>👤 Passenger</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.roleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            selectedRole === 'driver' && styles.selectedRole
+          ]}
+          onPress={() => setSelectedRole('driver')}
+        >
+          <Text style={styles.roleText}>🚗 Driver</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            selectedRole === 'passenger' && styles.selectedRole
+          ]}
+          onPress={() => setSelectedRole('passenger')}
+        >
+          <Text style={styles.roleText}>👤 Passenger</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.button} onPress={handleConfirmRide}>
@@ -318,18 +313,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#ededed',
     borderRadius: 10,
     paddingVertical: 13,
-    paddingHorizontal: 20, 
+    paddingHorizontal: 20,
   },
   closeText: {
     color: '#007AFF',
     fontWeight: 'bold',
   },
-  moodContainer: {
+  roleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginVertical: 15,
   },
-  moodButton: {
+  roleButton: {
     flex: 1,
     padding: 15,
     backgroundColor: '#f0f0f0',
@@ -337,11 +332,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     alignItems: 'center',
   },
-  selectedMood: {
+  selectedRole: {
     backgroundColor: '#007AFF',
   },
-  moodText: {
+  roleText: {
     fontWeight: 'bold',
+    color: '#000',
   },
 });
 
