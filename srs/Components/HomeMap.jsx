@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import MapView, { Polyline, Marker } from 'react-native-maps';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import Geolocation from '@react-native-community/geolocation';
+import ChatComponent from './ChatComponent';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4';
 
-const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
+const HomeMap = ({ pickup, dropoff, drawRoute = false, recipientName, rideId }) => {
   const [coordinates, setCoordinates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [chatVisible, setChatVisible] = useState(false);
   const mapRef = useRef(null);
 
-  // Fetch the user's current location on mount
   useEffect(() => {
     getCurrentLocation();
   }, []);
@@ -35,7 +37,6 @@ const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
     );
   };
 
-  // Fetch the route between pickup and dropoff if drawRoute is true
   useEffect(() => {
     if (drawRoute && pickup && dropoff) {
       fetchRoute(pickup, dropoff);
@@ -48,16 +49,8 @@ const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
       const response = await axios.post(
         'https://routes.googleapis.com/directions/v2:computeRoutes',
         {
-          origin: {
-            location: {
-              latLng: { latitude: origin.latitude, longitude: origin.longitude },
-            },
-          },
-          destination: {
-            location: {
-              latLng: { latitude: destination.latitude, longitude: destination.longitude },
-            },
-          },
+          origin: { location: { latLng: { latitude: origin.latitude, longitude: origin.longitude } } },
+          destination: { location: { latLng: { latitude: destination.latitude, longitude: destination.longitude } } },
           travelMode: 'DRIVE',
         },
         {
@@ -71,11 +64,12 @@ const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
 
       if (!response.data.routes || response.data.routes.length === 0) {
         Alert.alert('No Routes Found', 'Could not find a route between the locations.');
+        setLoading(false);
         return;
       }
 
-      const encodedPolyline = response.data.routes[0].polyline.encodedPolyline;
-      setCoordinates(decodePolyline(encodedPolyline));
+      const encoded = response.data.routes[0].polyline.encodedPolyline;
+      setCoordinates(decodePolyline(encoded));
     } catch (error) {
       console.error('Error fetching route:', error);
       Alert.alert('Route Error', 'There was an error fetching the route. Please try again later.');
@@ -86,14 +80,10 @@ const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
 
   const decodePolyline = (encoded) => {
     const points = [];
-    let index = 0,
-      lat = 0,
-      lng = 0;
+    let index = 0, lat = 0, lng = 0;
 
     while (index < encoded.length) {
-      let b,
-        shift = 0,
-        result = 0;
+      let b, shift = 0, result = 0;
       do {
         b = encoded.charCodeAt(index++) - 63;
         result |= (b & 0x1f) << shift;
@@ -117,16 +107,15 @@ const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
     return points;
   };
 
-  // Adjust the map view to fit the markers and route
   useEffect(() => {
     if (mapRef.current) {
-      const allCoords = [];
-      if (currentLocation) allCoords.push(currentLocation);
-      if (pickup) allCoords.push(pickup);
-      if (dropoff) allCoords.push(dropoff);
-      if (coordinates.length > 0) allCoords.push(...coordinates);
-
-      if (allCoords.length > 0) {
+      const allCoords = [
+        ...(currentLocation ? [currentLocation] : []),
+        ...(pickup ? [pickup] : []),
+        ...(dropoff ? [dropoff] : []),
+        ...coordinates,
+      ];
+      if (allCoords.length) {
         mapRef.current.fitToCoordinates(allCoords, {
           edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
           animated: true,
@@ -137,23 +126,30 @@ const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
 
   const handleRecenter = () => {
     if (mapRef.current) {
-      const allCoords = [];
-      if (currentLocation) allCoords.push(currentLocation);
-      if (pickup) allCoords.push(pickup);
-      if (dropoff) allCoords.push(dropoff);
-      if (coordinates.length > 0) allCoords.push(...coordinates);
-
-      if (allCoords.length > 0) {
-        mapRef.current.fitToCoordinates(allCoords, {
-          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-          animated: true,
-        });
-      }
+      mapRef.current.fitToCoordinates(
+        [
+          ...(currentLocation ? [currentLocation] : []),
+          ...(pickup ? [pickup] : []),
+          ...(dropoff ? [dropoff] : []),
+          ...coordinates,
+        ],
+        { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true }
+      );
     }
+  };
+
+  const handleMessages = () => {
+    setChatVisible(true);
+  };
+
+  const handleParcel = () => {
+    console.log('Parcel button pressed');
   };
 
   return (
     <View style={styles.container}>
+      {chatVisible && <ChatComponent onClose={() => setChatVisible(false)} />}
+
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
@@ -168,15 +164,18 @@ const HomeMap = ({ pickup, dropoff, drawRoute = false }) => {
               longitudeDelta: 0.1,
             }}
           >
-            {currentLocation && <Marker coordinate={currentLocation} title="Your Location" />}
+            {currentLocation && <Marker coordinate={currentLocation} title="Your Location" pinColor="blue" />}
             {pickup && <Marker coordinate={pickup} title="Pickup Location" />}
             {dropoff && <Marker coordinate={dropoff} title="Dropoff Location" />}
-            {drawRoute && coordinates.length > 0 && (
-              <Polyline coordinates={coordinates} strokeWidth={4} strokeColor="blue" />
-            )}
+            {drawRoute && coordinates.length > 0 && <Polyline coordinates={coordinates} strokeWidth={4} strokeColor="blue" />}
           </MapView>
-          <TouchableOpacity style={styles.recenterButton} onPress={handleRecenter}>
-            <Text style={styles.buttonText}>Recenter</Text>
+
+          <TouchableOpacity style={styles.parcelButton} onPress={handleParcel}>
+            <Icon name="package-variant" size={24} color="#2196F3" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.messagesButton} onPress={handleMessages}>
+            <Icon name="message-text" size={24} color="#2196F3" />
           </TouchableOpacity>
         </View>
       )}
@@ -195,23 +194,37 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  recenterButton: {
+  messagesButton: {
     position: 'absolute',
     bottom: 20,
     right: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 2,
     elevation: 3,
   },
-  buttonText: {
-    fontWeight: 'bold',
-    color: '#333',
+  parcelButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });
 

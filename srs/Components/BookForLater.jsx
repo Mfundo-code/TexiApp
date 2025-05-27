@@ -326,14 +326,14 @@ const styles = StyleSheet.create({
   },
   roleButton: {
     flex: 1,
-    padding: 15,
+    padding: 10,
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     marginHorizontal: 5,
     alignItems: 'center',
   },
   selectedRole: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#139beb',
   },
   roleText: {
     fontWeight: 'bold',
