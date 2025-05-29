@@ -127,7 +127,12 @@ const SearchResults = (props) => {
             <Text style={styles.loadingText}>Validating locations...</Text>
           </View>
         ) : (
-          <HomeMap pickup={validatedPickup} dropoff={validatedDropoff} drawRoute={true} />
+          <HomeMap 
+            pickup={validatedPickup} 
+            dropoff={validatedDropoff} 
+            drawRoute={true} 
+            showButtons={false}
+          />
         )}
       </View>
 
@@ -136,7 +141,9 @@ const SearchResults = (props) => {
           <>
             <Text style={styles.etaText}>Estimated drive: {eta}</Text>
             <Pressable style={styles.pressable} onPress={handleConfirmRide}>
-              <Text style={styles.pressableText}>Confirm Route</Text>
+              <Text style={styles.pressableText}>
+                {rideType === 'parcel' ? 'Confirm Parcel Delivery' : 'Confirm Route'}
+              </Text>
             </Pressable>
           </>
         )}

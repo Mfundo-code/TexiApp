@@ -8,11 +8,15 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from django.utils import timezone
+from .models import CustomUser, Ride, Message, Post, Comment
+from .serializers import (
+    RegisterSerializer, RideSerializer, MessageSerializer, 
+    PostSerializer, CreatePostSerializer, CommentSerializer, 
+    CreateCommentSerializer
+)
 
-from .models import Ride, Message
-from .serializers import RegisterSerializer, RideSerializer, MessageSerializer
-
-
+# User Registration
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     
@@ -26,13 +30,12 @@ class RegisterView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+# Authentication Endpoints
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
-
     user = authenticate(email=email, password=password)
     if user:
         token, _ = Token.objects.get_or_create(user=user)
@@ -44,7 +47,6 @@ def login_view(request):
         })
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
@@ -53,59 +55,65 @@ def logout_view(request):
     logout(request)
     return Response({'message': 'Logged out successfully'})
 
-
+# Rides
 class RideListCreateView(generics.ListCreateAPIView):
     serializer_class = RideSerializer
     permission_classes = [IsAuthenticated]
-
+    
     def get_queryset(self):
-        ride_type = 'request' if self.request.query_params.get('mode') == 'driver' else 'offer'
-        return Ride.objects.filter(ride_type=ride_type, is_active=True)
-
+        # Drivers see both passenger and parcel requests
+        if self.request.query_params.get('mode') == 'driver':
+            return Ride.objects.filter(
+                ride_type__in=['request', 'parcel'],
+                is_active=True
+            )
+        # Passengers/parcels see driver offers
+        else:
+            return Ride.objects.filter(
+                ride_type='offer',
+                is_active=True
+            )
+    
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-
 
 class RideDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Ride.objects.all()
     serializer_class = RideSerializer
     permission_classes = [IsAuthenticated]
-
+    
     def perform_update(self, serializer):
         if serializer.instance.user != self.request.user:
             raise PermissionDenied("You can only update your own rides")
         serializer.save()
-
+    
     def perform_destroy(self, instance):
         if instance.user != self.request.user:
             raise PermissionDenied("You can only delete your own rides")
         instance.delete()
 
-
 class RideMatchesView(APIView):
-    """
-    GET /api/rides/<ride_id>/matches/
-    Finds and returns the closest opposite-type ride based on your route,
-    and persists the mutual match relationship.
-    """
     permission_classes = [IsAuthenticated]
-
+    
     def get(self, request, ride_id):
         try:
             main_ride = Ride.objects.get(pk=ride_id, user=request.user)
             match = main_ride.find_matches()
-
+            
             if match:
-                # Persist the match relationship on both rides
+                # Persist the match relationship
                 main_ride.matched_ride = match
                 match.matched_ride = main_ride
                 main_ride.save()
                 match.save()
-
+                
                 return Response({
                     'match': {
                         'id': match.id,
+                        'ride_type': match.ride_type,
+                        'ride_type_display': match.get_ride_type_display(),
                         'user': {
+                            'id': match.user.id,
                             'name': match.user.username,
                             'phone': match.user.phone,
                         },
@@ -121,36 +129,104 @@ class RideMatchesView(APIView):
                         },
                     }
                 })
-
             return Response({'match': None})
-
         except Ride.DoesNotExist:
             return Response(
-                {'error': 'Ride not found'},
+                {'error': 'Ride not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
 
-
-class MessageListView(generics.ListCreateAPIView):
+# Unified Messaging
+class MessageListView(generics.ListAPIView):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
-
+    
     def get_queryset(self):
-        ride_id = self.kwargs['ride_id']
         return Message.objects.filter(
-            ride_id=ride_id
-        ).filter(
             Q(sender=self.request.user) | Q(recipient=self.request.user)
         ).order_by('timestamp')
 
+class MessageDetailView(generics.ListCreateAPIView):
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        partner_id = self.kwargs['user_id']
+        partner = get_object_or_404(CustomUser, id=partner_id)
+        return Message.objects.filter(
+            (Q(sender=self.request.user) & Q(recipient=partner)) |
+            (Q(sender=partner) & Q(recipient=self.request.user))
+        ).order_by('timestamp')
+    
     def perform_create(self, serializer):
-        ride = get_object_or_404(Ride, id=self.kwargs['ride_id'])
-        # determine the recipient: if the ride owner isn't you, message them;
-        # otherwise message the matched ride's owner
-        recipient = ride.user if ride.user != self.request.user else ride.matched_ride.user
-
+        partner_id = self.kwargs['user_id']
+        partner = get_object_or_404(CustomUser, id=partner_id)
         serializer.save(
             sender=self.request.user,
-            recipient=recipient,
-            ride=ride
+            recipient=partner
         )
+
+# Chats
+class ChatListView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        conversations = []
+        partners = CustomUser.objects.filter(
+            Q(received_messages__sender=request.user) |
+            Q(sent_messages__recipient=request.user)
+        ).distinct().exclude(id=request.user.id)
+        
+        for partner in partners:
+            latest_message = Message.objects.filter(
+                Q(sender=request.user, recipient=partner) |
+                Q(sender=partner, recipient=request.user)
+            ).order_by('-timestamp').first()
+            
+            conversations.append({
+                "id": partner.id,
+                "other_user": {
+                    "username": partner.username,
+                    "phone": partner.phone,
+                },
+                "latest_message": {
+                    "content": latest_message.content if latest_message else "New conversation",
+                    "timestamp": latest_message.timestamp if latest_message else timezone.now(),
+                }
+            })
+        
+        conversations.sort(key=lambda x: x['latest_message']['timestamp'], reverse=True)
+        return Response(conversations)
+
+# Community Hub
+class CommunityHubView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        posts = Post.objects.all().order_by('-created_at')
+        serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        serializer = CreatePostSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Post Comments
+class PostCommentsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, post_id):
+        comments = Comment.objects.filter(post_id=post_id).order_by('created_at')
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
+        serializer = CreateCommentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user, post=post)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

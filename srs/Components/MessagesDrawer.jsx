@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   View, 
   Text, 
@@ -16,8 +16,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import axios from 'axios';
 import { AuthContext } from "../../App";
 
-
-const MessagesDrawer = ({ onClose, recipientName, rideId }) => {
+const MessagesDrawer = ({ onClose, recipient }) => {
     const { authToken } = useContext(AuthContext);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
@@ -27,7 +26,7 @@ const MessagesDrawer = ({ onClose, recipientName, rideId }) => {
     const loadMessages = async () => {
         try {
             const { data } = await axios.get(
-                `http://192.168.0.137:8000/api/rides/${rideId}/messages/`,
+                `http://192.168.0.137:8000/api/messages/${recipient.id}/`,
                 { headers: { Authorization: `Token ${authToken}` } }
             );
             setMessages(data);
@@ -49,7 +48,7 @@ const MessagesDrawer = ({ onClose, recipientName, rideId }) => {
 
         try {
             await axios.post(
-                `http://192.168.0.137:8000/api/rides/${rideId}/messages/`,
+                `http://192.168.0.137:8000/api/messages/${recipient.id}/`,
                 { content: newMessage },
                 { headers: { Authorization: `Token ${authToken}` } }
             );
@@ -69,7 +68,7 @@ const MessagesDrawer = ({ onClose, recipientName, rideId }) => {
                 
                 <View style={styles.profileContainer}>
                     <MaterialCommunityIcons name="account-circle" size={32} color="#139beb" />
-                    <Text style={styles.profileName}>{recipientName}</Text>
+                    <Text style={styles.profileName}>{recipient.username}</Text>
                 </View>
                 
                 <View style={styles.rightSpacer} />
@@ -91,10 +90,10 @@ const MessagesDrawer = ({ onClose, recipientName, rideId }) => {
                             key={message.id} 
                             style={[
                                 styles.messageBubble,
-                                !message.is_me ? styles.theirMessage : styles.myMessage
+                                message.is_me ? styles.myMessage : styles.theirMessage
                             ]}
                         >
-                            <Text style={!message.is_me ? styles.messageText : styles.myMessageText}>
+                            <Text style={message.is_me ? styles.myMessageText : styles.messageText}>
                                 {message.content}
                             </Text>
                             <Text style={styles.messageTime}>

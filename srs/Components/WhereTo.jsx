@@ -16,12 +16,13 @@ const WhereTo = (props) => {
 
 const styles = StyleSheet.create({
   inputBox: {
-    backgroundColor: '#d3d3d3', // Light gray background
+    backgroundColor: '#e6f2fa', // Light gray background
     borderRadius: 10,
     padding: 6,
     flexDirection: 'row',
     alignItems: 'center',
     margin: 10,
+    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
