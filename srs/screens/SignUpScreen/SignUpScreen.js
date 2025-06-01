@@ -8,6 +8,7 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage'; // <-- correct AsyncStorage import
 import Ionicons from "react-native-vector-icons/Ionicons"; // <-- vector icons
 
 const API_URL = "http://192.168.0.137:8000/api";
@@ -29,6 +30,8 @@ export default function SignUpScreen({ navigation }) {
 
       const json = await res.json();
       if (res.ok) {
+        // store username locally
+        await AsyncStorage.setItem("username", username);
         Alert.alert("Success", json.message || "Account created");
         navigation.navigate("SignIn");
       } else {
@@ -75,7 +78,7 @@ export default function SignUpScreen({ navigation }) {
       {/* Password field with eye toggle */}
       <View style={styles.passwordContainer}>
         <TextInput
-          style={[styles.input, { flex: 1 }]}
+          style={[styles.input, styles.passwordInput]}
           placeholder="Password"
           placeholderTextColor="#999"
           secureTextEntry={!showPassword}
@@ -131,15 +134,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 16,
-    color: "#000", // typed text is black
+    color: "#000",
   },
   passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    position: 'relative',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    paddingRight: 44, // space for eye icon
   },
   eyeButton: {
     position: "absolute",
     right: 12,
+    top: 13,
     padding: 8,
   },
   button: {

@@ -1,3 +1,4 @@
+// MessageScreen.js (new file)
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   View, 
@@ -16,7 +17,8 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import axios from 'axios';
 import { AuthContext } from "../../App";
 
-const MessagesDrawer = ({ onClose, recipient }) => {
+const MessageScreen = ({ navigation, route }) => {
+    const { recipient } = route.params;
     const { authToken } = useContext(AuthContext);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
@@ -60,9 +62,9 @@ const MessagesDrawer = ({ onClose, recipient }) => {
     };
 
     return (
-        <SafeAreaView style={styles.drawerContainer}>
+        <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.backButton}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#139beb" />
                 </TouchableOpacity>
                 
@@ -127,15 +129,9 @@ const MessagesDrawer = ({ onClose, recipient }) => {
 };
 
 const styles = StyleSheet.create({
-    drawerContainer: {
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        width: '100%',
-        height: '100%',
+    container: {
+        flex: 1,
         backgroundColor: '#ffffff',
-        zIndex: 1000,
-        elevation: 10,
     },
     header: {
         flexDirection: 'row',
@@ -177,7 +173,7 @@ const styles = StyleSheet.create({
     },
     messageBubble: {
         maxWidth: '80%',
-        padding: 12,
+        padding: 10,
         borderRadius: 15,
         marginBottom: 10,
     },
@@ -200,8 +196,8 @@ const styles = StyleSheet.create({
     messageTime: {
         fontSize: 10,
         color: '#666',
-        marginTop: 5,
         textAlign: 'right',
+        marginTop: 4,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -225,4 +221,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default MessagesDrawer;
+export default MessageScreen;

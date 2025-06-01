@@ -11,9 +11,9 @@ from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
 from .models import CustomUser, Ride, Message, Post, Comment
 from .serializers import (
-    RegisterSerializer, RideSerializer, MessageSerializer, 
-    PostSerializer, CreatePostSerializer, CommentSerializer, 
-    CreateCommentSerializer
+    RegisterSerializer, RideSerializer, MessageSerializer,
+    PostSerializer, CreatePostSerializer, CommentSerializer,
+    CreateCommentSerializer,
 )
 
 # User Registration
@@ -43,6 +43,7 @@ def login_view(request):
             'token': token.key,
             'user_id': user.id,
             'email': user.email,
+            'username': user.username,
             'phone': user.phone
         })
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -61,17 +62,18 @@ class RideListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        # Drivers see both passenger and parcel requests
+        # Add expiration check to queries
         if self.request.query_params.get('mode') == 'driver':
             return Ride.objects.filter(
                 ride_type__in=['request', 'parcel'],
-                is_active=True
+                _is_active=True,
+                expires_at__gt=timezone.now()
             )
-        # Passengers/parcels see driver offers
         else:
             return Ride.objects.filter(
                 ride_type='offer',
-                is_active=True
+                _is_active=True,
+                expires_at__gt=timezone.now()
             )
     
     def perform_create(self, serializer):
@@ -153,6 +155,14 @@ class MessageDetailView(generics.ListCreateAPIView):
     def get_queryset(self):
         partner_id = self.kwargs['user_id']
         partner = get_object_or_404(CustomUser, id=partner_id)
+        
+        # Mark received messages as read when fetching
+        Message.objects.filter(
+            sender=partner,
+            recipient=self.request.user,
+            is_read=False
+        ).update(is_read=True)
+        
         return Message.objects.filter(
             (Q(sender=self.request.user) & Q(recipient=partner)) |
             (Q(sender=partner) & Q(recipient=self.request.user))
@@ -183,6 +193,13 @@ class ChatListView(APIView):
                 Q(sender=partner, recipient=request.user)
             ).order_by('-timestamp').first()
             
+            # Calculate unread count
+            unread_count = Message.objects.filter(
+                sender=partner,
+                recipient=request.user,
+                is_read=False
+            ).count()
+            
             conversations.append({
                 "id": partner.id,
                 "other_user": {
@@ -192,7 +209,8 @@ class ChatListView(APIView):
                 "latest_message": {
                     "content": latest_message.content if latest_message else "New conversation",
                     "timestamp": latest_message.timestamp if latest_message else timezone.now(),
-                }
+                },
+                "unread_count": unread_count
             })
         
         conversations.sort(key=lambda x: x['latest_message']['timestamp'], reverse=True)
@@ -230,3 +248,24 @@ class PostCommentsView(APIView):
             serializer.save(user=request.user, post=post)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class RideHistoryView(generics.ListAPIView):
+    serializer_class = RideSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Return all user's rides regardless of status
+        return Ride.objects.filter(
+            user=self.request.user
+        ).order_by('-departure_time')
+
+
+# Fixed endpoint: unread message count
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def unread_message_count(request):
+    count = Message.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).count()
+    return Response({'unread_count': count or 0})  # Ensure 0 is returned

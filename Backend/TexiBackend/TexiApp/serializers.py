@@ -43,8 +43,8 @@ class MessageSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Message
-        fields = ['id', 'content', 'timestamp', 'sender_name', 'is_me']
-        read_only_fields = ['sender', 'recipient', 'timestamp']
+        fields = ['id', 'content', 'timestamp', 'sender_name', 'is_me', 'is_read']  # Added is_read
+        read_only_fields = ['sender', 'recipient', 'timestamp', 'is_read']  # Make is_read read-only
     
     def get_is_me(self, obj):
         return obj.sender == self.context['request'].user

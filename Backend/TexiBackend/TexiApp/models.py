@@ -1,3 +1,4 @@
+# models.py
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser, PermissionsMixin, BaseUserManager
@@ -5,6 +6,7 @@ from django.contrib.auth.models import (
 from django.utils import timezone
 from django.db.models import Q
 from math import radians, sin, cos, sqrt, atan2, asin, acos
+from datetime import timedelta
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, username, email, phone, password=None):
@@ -65,7 +67,7 @@ class Ride(models.Model):
     dropoff_name = models.CharField(max_length=255)
     dropoff_lat = models.FloatField()
     dropoff_lng = models.FloatField()
-    is_active = models.BooleanField(default=True)
+    _is_active = models.BooleanField(default=True, db_column='is_active')  # Renamed field
     matched_ride = models.ForeignKey(
         'self', 
         on_delete=models.SET_NULL, 
@@ -73,10 +75,58 @@ class Ride(models.Model):
         blank=True, 
         related_name='matches'
     )
+    expires_at = models.DateTimeField(default=timezone.now)  # New expiration field
     
     def __str__(self):
         return f"{self.user.email} – {self.get_ride_type_display()}"
     
+    @staticmethod
+    def calculate_distance(lat1, lon1, lat2, lon2):
+        """Calculate distance between two points in kilometers"""
+        R = 6371  # Earth radius in km
+        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return R * c
+
+    def save(self, *args, **kwargs):
+        """Set expiration time when creating a new ride"""
+        if not self.pk:  # Only on creation
+            distance = self.calculate_distance(
+                self.pickup_lat, self.pickup_lng,
+                self.dropoff_lat, self.dropoff_lng
+            )
+            
+            if distance <= 25:
+                expires_hours = 1.5
+            elif distance <= 50:
+                expires_hours = 3
+            elif distance <= 100:
+                expires_hours = 4.5
+            else:
+                expires_hours = 6
+                
+            self.expires_at = timezone.now() + timedelta(hours=expires_hours)
+        
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        """Check if ride has expired based on time"""
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_active(self):
+        """Computed property that considers both manual flag and expiration"""
+        return self._is_active and not self.is_expired
+    
+    @is_active.setter
+    def is_active(self, value):
+        """Setter for the underlying field"""
+        self._is_active = value
+
     @staticmethod
     def calculate_route_metrics(a_lat, a_lon, b_lat, b_lon, c_lat, c_lon):
         """ Calculate route distance A→B, cross-track and along-track distances for point C. """
@@ -137,9 +187,11 @@ class Ride(models.Model):
         else:
             target_types = ['offer']
         
+        # Add expiration check to query
         candidates = Ride.objects.filter(
             ride_type__in=target_types,
-            is_active=True
+            _is_active=True,  # Use the underlying field
+            expires_at__gt=timezone.now()  # Not expired
         ).exclude(user=self.user)
         
         scored = []
@@ -174,6 +226,7 @@ class Message(models.Model):
     )
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)  # New field
     
     def __str__(self):
         return f"{self.sender} to {self.recipient}: {self.content[:20]}"

@@ -10,6 +10,11 @@ import { AuthContext } from "../../App";
 import ChatsScreen from "../screens/ChatScreen/ChatsScreen";
 import CommunityHubScreen from "../screens/HubScreen/CommunityHubScreen";
 import ParcelsScreen from "../screens/ParcelsScreen/ParcelsScreen";
+import RidesListScreen from "../screens/RidesListScreen";
+import ParcelListScreen from "../screens/ParcelListScreen";
+import RideDetailsScreen from "../screens/RideDetailsScreen";
+import BookForLaterScreen from "../screens/BookForLaterScreen";
+import MessageScreen from "../screens/MessageScreen";
 
 const AppStack = createStackNavigator();
 const AuthStack = createStackNavigator();
@@ -22,6 +27,11 @@ const AppNavigator = () => (
     <AppStack.Screen name="CommunityHub" component={CommunityHubScreen} />
     <AppStack.Screen name="RideConfirmation" component={RideConfirmation} />
     <AppStack.Screen name="Parcels" component={ParcelsScreen} />
+    <AppStack.Screen name="RidesList" component={RidesListScreen} />
+    <AppStack.Screen name="ParcelList" component={ParcelListScreen} />
+    <AppStack.Screen name="RideDetailsScreen" component={RideDetailsScreen} />
+    <AppStack.Screen name="BookForLaterScreen" component={BookForLaterScreen} />
+    <AppStack.Screen name="MessageScreen" component={MessageScreen} />
   </AppStack.Navigator>
 );
 
@@ -43,3 +53,4 @@ const RootNavigator = () => {
 };
 
 export default RootNavigator;
+

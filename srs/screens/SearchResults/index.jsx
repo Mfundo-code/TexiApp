@@ -1,7 +1,10 @@
+// SearchResults.js
+
 import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import HomeMap from "../../Components/HomeMap";
 import axios from "axios";
+import StatusComponent from '../../Components/StatusComponent'; // Added import
 
 const SearchResults = (props) => {
   const { pickup, dropoff, rideType } = props.route.params;
@@ -120,6 +123,9 @@ const SearchResults = (props) => {
 
   return (
     <View style={styles.container}>
+      {/* Added StatusComponent at the top */}
+      <StatusComponent isPressable={false} />
+
       <View style={styles.mapContainer}>
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -157,16 +163,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mapContainer: {
-    flex: 7,
     backgroundColor: "#fff",
   },
   loadingContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 10,
     fontSize: 16,
     color: "#75797d",
   },
@@ -175,9 +178,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
     backgroundColor: "#fff",
+    marginTop: 0
   },
   etaText: {
     marginBottom: 10,
+    marginTop:1,
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: "center",

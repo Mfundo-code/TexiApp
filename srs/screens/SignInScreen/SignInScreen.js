@@ -15,7 +15,7 @@ import { AuthContext } from "../../../App";
 const API_URL = "http://192.168.0.137:8000/api";
 
 export default function SignInScreen({ navigation }) {
-  const { setIsAuthenticated, setAuthToken } = useContext(AuthContext);
+  const { setIsAuthenticated, setAuthToken, setUsername } = useContext(AuthContext);
 
   const [email, setEmail]             = useState("");
   const [password, setPassword]       = useState("");
@@ -32,7 +32,9 @@ export default function SignInScreen({ navigation }) {
       const json = await res.json();
       if (res.ok) {
         await AsyncStorage.setItem("userToken", json.token);
+        await AsyncStorage.setItem("username", json.username);
         setAuthToken(json.token);
+        setUsername(json.username);
         setIsAuthenticated(true);
       } else {
         Alert.alert("Sign-in failed", json.error || "Unknown error");

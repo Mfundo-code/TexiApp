@@ -1,32 +1,38 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+// RideConfirmation.js
+import React, { useState, useContext, useRef, useEffect } from "react";
 import { 
   View, 
   StyleSheet, 
   Alert, 
   ActivityIndicator, 
   Text, 
-  Linking 
+  Linking,
+  TouchableOpacity 
 } from "react-native";
 import HomeMap from "../../Components/HomeMap";
 import RideComponents from "../../Components/RideComponents";
-import MessagesDrawer from "../../Components/MessagesDrawer";
 import axios from "axios";
 import { AuthContext } from "../../../App";
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 const RideConfirmation = ({ route, navigation }) => {
   const { authToken } = useContext(AuthContext);
   const { pickup, dropoff, rideType } = route.params;
-  const [isMessageDrawerVisible, setMessageDrawerVisible] = useState(false);
   const [matchingRide, setMatchingRide] = useState(null);
+  const [previousMatches, setPreviousMatches] = useState([]);
   const [eta, setETA] = useState("");
+  const [isAccepted, setIsAccepted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rideSaved, setRideSaved] = useState(false);
   const pollingCountRef = useRef(0);
-  const MAX_POLL_ATTEMPTS = 3;
+  const MAX_POLL_ATTEMPTS = 2;
   const intervalRef = useRef(null);
+  const currentRideIdRef = useRef(null);
 
   // Haversine distance helper
   const haversineDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // km
-    const toRad = deg => (deg * Math.PI) / 180;
+    const toRad = (deg) => (deg * Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
     const a =
@@ -51,83 +57,105 @@ const RideConfirmation = ({ route, navigation }) => {
     return min === 0 ? `${hr} hours` : `${hr} hours ${min} mins`;
   };
 
-  useEffect(() => {
-    let rideId;
+  const deleteRide = async (rideId) => {
+    try {
+      await axios.delete(
+        `http://192.168.0.137:8000/api/rides/${rideId}/`,
+        { headers: { Authorization: `Token ${authToken}` } }
+      );
+      return true;
+    } catch (error) {
+      console.error("Error deleting ride:", error);
+      return false;
+    }
+  };
 
-    const checkForMatch = async () => {
-      pollingCountRef.current += 1;
-      try {
-        const { data } = await axios.get(
-          `http://192.168.0.137:8000/api/rides/${rideId}/matches/`,
-          { headers: { Authorization: `Token ${authToken}` } }
-        );
+  const checkForMatch = async (rideId) => {
+    pollingCountRef.current += 1;
+    try {
+      const { data } = await axios.get(
+        `http://192.168.0.137:8000/api/rides/${rideId}/matches/`,
+        { headers: { Authorization: `Token ${authToken}` } }
+      );
 
-        if (data.match) {
-          clearInterval(intervalRef.current);
-          const matched = {
-            ...data.match,
-            user: {
-              id: data.match.user.id,
-              name: data.match.user.name,
-              phone: data.match.user.phone,
-            },
-          };
-          setMatchingRide(matched);
-          // calculate ETA for matched ride
-          const rideEta = calculateETA(pickup, {
-            latitude: data.match.pickup.lat,
-            longitude: data.match.pickup.lng
-          });
-          setETA(rideEta);
-        } else if (pollingCountRef.current >= MAX_POLL_ATTEMPTS) {
-          clearInterval(intervalRef.current);
-          Alert.alert("Timeout", "No matches found. Please try again.");
-          navigation.goBack();
-        }
-      } catch (pollError) {
-        console.error("Error checking matches:", pollError);
+      if (data.match) {
         clearInterval(intervalRef.current);
-        Alert.alert("Error", "Failed to find matches. Please try again.");
-        navigation.goBack();
-      }
-    };
-
-    const createAndStartPolling = async () => {
-      try {
-        const createResponse = await axios.post(
-          "http://192.168.0.137:8000/api/rides/",
-          {
-            ride_type: rideType,
-            pickup_name: pickup.address,
-            pickup_lat: pickup.latitude,
-            pickup_lng: pickup.longitude,
-            dropoff_name: dropoff.address,
-            dropoff_lat: dropoff.latitude,
-            dropoff_lng: dropoff.longitude,
+        intervalRef.current = null;
+        
+        const matched = {
+          ...data.match,
+          user: {
+            id: data.match.user.id,
+            name: data.match.user.name,
+            phone: data.match.user.phone,
           },
-          {
-            headers: {
-              Authorization: `Token ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        rideId = createResponse.data.id;
-        intervalRef.current = setInterval(checkForMatch, 5000);
-      } catch (error) {
-        console.error("Ride creation error:", error);
-        Alert.alert("Error", "Failed to create ride");
-        navigation.goBack();
+        };
+        
+        const rideEta = calculateETA(pickup, {
+          latitude: matched.pickup.lat,
+          longitude: matched.pickup.lng,
+        });
+        setETA(rideEta);
+        
+        setMatchingRide(matched);
+        setIsLoading(false);
+      } else if (pollingCountRef.current >= MAX_POLL_ATTEMPTS) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        setRideSaved(true);
+        setIsLoading(false);
+        
+        const message = rideType === 'request' || rideType === 'parcel'
+          ? "No driver found yet. Your ride is saved and a driver will communicate with you."
+          : "No passenger found yet. Your ride offer is saved and a passenger will communicate with you.";
+        
+        Alert.alert("Ride Saved", message);
       }
-    };
+    } catch (pollError) {
+      console.error("Error checking matches:", pollError);
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+      Alert.alert("Error", "Failed to find matches. Please try again.");
+    }
+  };
 
-    createAndStartPolling();
+  const createAndStartPolling = async () => {
+    try {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      setIsLoading(true);
+      pollingCountRef.current = 0;
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [authToken, pickup, dropoff, rideType, navigation]);
+      const createResponse = await axios.post(
+        "http://192.168.0.137:8000/api/rides/",
+        {
+          ride_type: rideType,
+          pickup_name: pickup.address,
+          pickup_lat: pickup.latitude,
+          pickup_lng: pickup.longitude,
+          dropoff_name: dropoff.address,
+          dropoff_lat: dropoff.latitude,
+          dropoff_lng: dropoff.longitude,
+        },
+        {
+          headers: {
+            Authorization: `Token ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const rideId = createResponse.data.id;
+      currentRideIdRef.current = rideId;
+      intervalRef.current = setInterval(() => checkForMatch(rideId), 5000);
+    } catch (error) {
+      console.error("Ride creation error:", error);
+      Alert.alert("Error", "Failed to create ride");
+    }
+  };
 
   const handleCallPress = () => {
     if (matchingRide?.user?.phone) {
@@ -137,62 +165,178 @@ const RideConfirmation = ({ route, navigation }) => {
     }
   };
 
-  const renderMap = () =>
-    matchingRide ? (
-      <HomeMap
-        pickup={pickup}
-        dropoff={{
-          latitude: matchingRide.pickup.lat,
-          longitude: matchingRide.pickup.lng,
-          address: matchingRide.pickup.name
-        }}
-        drawRoute
-        showButtons={false}
-      />
-    ) : (
-      <HomeMap pickup={pickup} showButtons={false} />
-    );
+  const handleReload = async () => {
+    if (isAccepted || rideSaved) return;
+    
+    if (matchingRide) {
+      setPreviousMatches(prev => [...prev, matchingRide]);
+    }
+    
+    setMatchingRide(null);
+    setRideSaved(false);
+    
+    await createAndStartPolling();
+  };
 
-  if (!matchingRide) {
+  const handlePrevious = () => {
+    if (previousMatches.length === 0 || isAccepted || rideSaved) return;
+    
+    const lastMatch = previousMatches[previousMatches.length - 1];
+    setMatchingRide(lastMatch);
+    setPreviousMatches(prev => prev.slice(0, -1));
+    
+    const prevEta = calculateETA(pickup, {
+      latitude: lastMatch.pickup.lat,
+      longitude: lastMatch.pickup.lng,
+    });
+    setETA(prevEta);
+  };
+
+  const handleDone = () => {
+    setIsAccepted(true);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    navigation.navigate('Home');
+  };
+
+  const handleMessagePress = () => {
+    if (matchingRide && matchingRide.user) {
+      navigation.navigate('MessageScreen', { 
+        recipient: {
+          id: matchingRide.user.id,
+          username: matchingRide.user.name,
+          phone: matchingRide.user.phone,
+        }
+      });
+    }
+  };
+
+  // Initial ride creation
+  useEffect(() => {
+    createAndStartPolling();
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      if (currentRideIdRef.current && !isAccepted && !rideSaved) {
+        deleteRide(currentRideIdRef.current);
+      }
+    };
+  }, []);
+
+  if (isLoading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" style={styles.loader} />
         <Text style={styles.loadingText}>
           {pollingCountRef.current === 0
             ? "Creating ride..."
-            : `Searching for matches (${pollingCountRef.current})...`}  
+            : `Searching for matches (${pollingCountRef.current})...`}
         </Text>
+      </View>
+    );
+  }
+
+  if (rideSaved) {
+    return (
+      <View style={styles.savedContainer}>
+        <Icon name="check-circle" size={60} color="#4CAF50" />
+        <Text style={styles.savedTitle}>Ride Saved Successfully!</Text>
+        <Text style={styles.savedText}>
+          {rideType === 'request' || rideType === 'parcel'
+            ? "A driver will contact you when available"
+            : "A passenger will contact you when available"}
+        </Text>
+        
+        <TouchableOpacity
+          style={styles.savedDoneButton}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Text style={styles.savedDoneButtonText}>Done</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {renderMap()}
-
-      {/* ETA Display */}
-      <View style={styles.etaContainer}>
-        <Text style={styles.etaText}>Estimated drive: {eta}</Text>
-      </View>
-
-      <RideComponents
-        onMessagePress={() => setMessageDrawerVisible(true)}
-        onCallPress={handleCallPress}
-        recipientName={matchingRide.user.name}
-        // Add parcel-specific icon
-        isParcel={rideType === 'parcel'}
-      />
-
-      {isMessageDrawerVisible && (
-        <MessagesDrawer
-          onClose={() => setMessageDrawerVisible(false)}
-          recipient={{
-            id: matchingRide.user.id,
-            username: matchingRide.user.name,
-            phone: matchingRide.user.phone
+      <View style={styles.contentContainer}>
+        <HomeMap
+          pickup={pickup}
+          dropoff={{
+            latitude: matchingRide.pickup.lat,
+            longitude: matchingRide.pickup.lng,
+            address: matchingRide.pickup.name,
           }}
+          drawRoute
+          showButtons={false}
         />
-      )}
+
+        <View style={styles.etaContainer}>
+          <Text style={styles.etaText}>Estimated drive: {eta}</Text>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={[styles.button, styles.reloadButton]}
+            onPress={handleReload}
+            disabled={isAccepted}
+          >
+            <Icon 
+              name="refresh" 
+              size={24} 
+              color={isAccepted ? "#aaa" : "#139beb"} 
+            />
+            <Text style={[styles.buttonText, isAccepted && styles.disabledText]}>
+              Reload
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.button, styles.previousButton]}
+            onPress={handlePrevious}
+            disabled={previousMatches.length === 0 || isAccepted}
+          >
+            <Icon 
+              name="step-backward" 
+              size={24} 
+              color={previousMatches.length === 0 || isAccepted ? "#aaa" : "#139beb"} 
+            />
+            <Text style={[
+              styles.buttonText, 
+              (previousMatches.length === 0 || isAccepted) && styles.disabledText
+            ]}>
+              Previous
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.button, styles.doneButton]}
+            onPress={handleDone}
+            disabled={isAccepted}
+          >
+            <Icon 
+              name="check" 
+              size={24} 
+              color={isAccepted ? "#aaa" : "#139beb"} 
+            />
+            <Text style={[styles.buttonText, isAccepted && styles.disabledText]}>
+              Done
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <RideComponents
+          onMessagePress={handleMessagePress}
+          onCallPress={handleCallPress}
+          recipientName={matchingRide.user.name}
+          isParcel={rideType === "parcel"}
+        />
+      </View>
     </View>
   );
 };
@@ -201,6 +345,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#ffffff",
+  },
+  savedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#ffffff',
+  },
+  savedTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginVertical: 10,
+    color: '#333',
+  },
+  savedText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#666',
+    paddingHorizontal: 20,
+  },
+  savedDoneButton: {
+    backgroundColor: '#139beb',
+    padding: 15,
+    borderRadius: 8,
+    width: '80%',
+    alignItems: 'center',
+  },
+  savedDoneButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   loader: {
     marginTop: 50,
@@ -212,14 +388,45 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   etaContainer: {
-    padding: 2,
-    backgroundColor: '#f0f8ff',
-    alignItems: 'center',
+    padding: 10,
+    backgroundColor: "#f0f8ff",
+    alignItems: "center",
   },
   etaText: {
     fontSize: 18,
+    fontWeight: "bold",
+    color: "#75797d",
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 2,
+    backgroundColor: "#f0f8ff",
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    marginBottom: 1,
+    height: 48,
+  },
+  button: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 1,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    marginTop: 1,
+  },
+  buttonText: {
+    color: '#139beb',
+    marginLeft: 8,
     fontWeight: 'bold',
-    color: '#75797d',
+  },
+  disabledText: {
+    color: '#aaa',
   },
 });
 

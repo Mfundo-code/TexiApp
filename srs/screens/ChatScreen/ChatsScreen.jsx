@@ -1,3 +1,5 @@
+// ChatsScreen.js
+
 import React, { useState, useEffect, useContext } from 'react';
 import { 
   SafeAreaView, 
@@ -13,14 +15,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from '../../../App';
-import MessagesDrawer from "../../Components/MessagesDrawer";
 
 const ChatsScreen = ({ navigation }) => {
     const { authToken } = useContext(AuthContext);
     const [chats, setChats] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeRecipient, setActiveRecipient] = useState(null);
-    const [isMessageDrawerVisible, setMessageDrawerVisible] = useState(false);
 
     const fetchChats = async () => {
         try {
@@ -42,18 +41,20 @@ const ChatsScreen = ({ navigation }) => {
     }, []);
 
     const handleChatSelect = (chat) => {
-        setActiveRecipient({
-            id: chat.id,
-            username: chat.other_user.username,
-            phone: chat.other_user.phone
+        navigation.navigate('MessageScreen', {
+            recipient: {
+                id: chat.id,
+                username: chat.other_user.username,
+                phone: chat.other_user.phone
+            }
         });
-        setMessageDrawerVisible(true);
     };
 
     const handleCall = (phoneNumber) => {
         Linking.openURL(`tel:${phoneNumber}`);
     };
 
+    // Add badge to chat items
     const renderChatItem = ({ item }) => (
         <TouchableOpacity 
             style={styles.chatItem}
@@ -65,10 +66,18 @@ const ChatsScreen = ({ navigation }) => {
                     size={60} 
                     color="#139beb" 
                 />
+                {/* Badge for unread messages */}
+                {item.unread_count > 0 && (
+                    <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadText}>{item.unread_count}</Text>
+                    </View>
+                )}
             </View>
             
             <View style={styles.chatContent}>
-                <Text style={styles.username}>{item.other_user.username}</Text>
+                <Text style={item.unread_count > 0 ? styles.usernameUnread : styles.username}>
+                    {item.other_user.username}
+                </Text>
                 <Text style={styles.messagePreview} numberOfLines={1}>
                     {item.latest_message.content}
                 </Text>
@@ -99,9 +108,6 @@ const ChatsScreen = ({ navigation }) => {
                 color="#e0e0e0" 
             />
             <Text style={styles.emptyTitle}>No messages yet</Text>
-            <Text style={styles.emptyText}>
-                Start a conversation by matching with someone or messaging a community member
-            </Text>
         </View>
     );
 
@@ -127,13 +133,6 @@ const ChatsScreen = ({ navigation }) => {
                     keyExtractor={item => `chat-${item.id}`}
                     contentContainerStyle={chats.length === 0 ? styles.emptyList : styles.listContent}
                     ListEmptyComponent={renderEmptyState}
-                />
-            )}
-
-            {isMessageDrawerVisible && activeRecipient && (
-                <MessagesDrawer
-                    onClose={() => setMessageDrawerVisible(false)}
-                    recipient={activeRecipient}
                 />
             )}
         </SafeAreaView>
@@ -226,11 +225,28 @@ const styles = StyleSheet.create({
         marginVertical: 15,
         textAlign: 'center',
     },
-    emptyText: {
+    // New styles for unread badge and bold username
+    unreadBadge: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        backgroundColor: '#FF3B30',
+        borderRadius: 10,
+        width: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    unreadText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    usernameUnread: {
         fontSize: 16,
-        color: '#999',
-        textAlign: 'center',
-        lineHeight: 24,
+        fontWeight: 'bold',
+        color: '#000',
+        marginBottom: 4,
     },
 });
 

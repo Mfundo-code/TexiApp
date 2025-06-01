@@ -1,20 +1,26 @@
+// BookForLaterScreen.js
+
 import React, { useState, useEffect, useContext } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  FlatList,
-  StyleSheet
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Alert, 
+  FlatList, 
+  StyleSheet 
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Geolocation from '@react-native-community/geolocation';
 import dayjs from 'dayjs';
 import axios from 'axios';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AuthContext } from '../../App';
 
-const BookForLater = ({ onClose }) => {
+const BookForLaterScreen = () => {
+  const navigation = useNavigation();
   const { authToken } = useContext(AuthContext);
+
   const [fromText, setFromText] = useState('');
   const [destinationText, setDestinationText] = useState('');
   const [departureTime, setDepartureTime] = useState(dayjs().format('YYYY-MM-DD HH:mm'));
@@ -102,6 +108,7 @@ const BookForLater = ({ onClose }) => {
       if (isFrom) {
         setFromText(item.description);
         setCurrentLocation(item.coords);
+        setFromSuggestions([]);
       }
       return;
     }
@@ -130,7 +137,7 @@ const BookForLater = ({ onClose }) => {
       const rideType = selectedRole === 'driver' ? 'offer' : 'request';
 
       await axios.post(
-        'http://192.168.0.137:8000/api/rides/', // Replace with your actual API endpoint
+        'http://192.168.0.137:8000/api/rides/',
         {
           ride_type: rideType,
           pickup_name: fromText,
@@ -150,7 +157,7 @@ const BookForLater = ({ onClose }) => {
       );
 
       Alert.alert('Success', 'Ride created successfully!', [
-        { text: 'OK', onPress: onClose },
+        { text: 'OK', onPress: handleClose },
       ]);
     } catch (error) {
       console.error('Create Ride Error:', error);
@@ -158,96 +165,124 @@ const BookForLater = ({ onClose }) => {
     }
   };
 
+  const handleClose = () => navigation.goBack();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Ride Information</Text>
+      {/* Header with back arrow and title */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={24} color="#139beb" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Book For Later</Text>
+        <View style={styles.spacer} />
+      </View>
 
-      <View style={styles.inputContainer}>
-        <Text>From:</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter pickup location"
-          value={fromText}
-          onChangeText={(text) => {
-            setFromText(text);
-            fetchPlaces(text, true);
-          }}
-        />
-        {fromSuggestions.length > 0 && (
-          <FlatList
-            data={fromSuggestions}
-            keyExtractor={(item) => item.place_id}
-            renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => handleLocationSelect(item, true)}>
-                <Text style={styles.suggestionItem}>{item.description}</Text>
-              </TouchableOpacity>
-            )}
+      {/* Main content */}
+      <View style={styles.content}>
+        <View style={styles.inputContainer}>
+          <Text>From:</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Enter pickup location"
+            placeholderTextColor="gray"
+            value={fromText}
+            onChangeText={(text) => {
+              setFromText(text);
+              fetchPlaces(text, true);
+            }}
           />
-        )}
-      </View>
+          {fromSuggestions.length > 0 && (
+            <FlatList
+              data={fromSuggestions}
+              keyExtractor={(item) => item.place_id}
+              renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => handleLocationSelect(item, true)}>
+                  <View style={styles.suggestionRow}>
+                    <MaterialIcons
+                      name="place"
+                      size={20}
+                      color="#5d5d5d"
+                      style={styles.pinIcon}
+                    />
+                    <Text style={styles.suggestionText}>{item.description}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+        </View>
 
-      <View style={styles.inputContainer}>
-        <Text>Destination:</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter destination"
-          value={destinationText}
-          onChangeText={(text) => {
-            setDestinationText(text);
-            fetchPlaces(text, false);
-          }}
-        />
-        {destinationSuggestions.length > 0 && (
-          <FlatList
-            data={destinationSuggestions}
-            keyExtractor={(item) => item.place_id}
-            renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => handleLocationSelect(item, false)}>
-                <Text style={styles.suggestionItem}>{item.description}</Text>
-              </TouchableOpacity>
-            )}
+        <View style={styles.inputContainer}>
+          <Text>Destination:</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Enter destination"
+            placeholderTextColor="gray"
+            value={destinationText}
+            onChangeText={(text) => {
+              setDestinationText(text);
+              fetchPlaces(text, false);
+            }}
           />
-        )}
-      </View>
+          {destinationSuggestions.length > 0 && (
+            <FlatList
+              data={destinationSuggestions}
+              keyExtractor={(item) => item.place_id}
+              renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => handleLocationSelect(item, false)}>
+                  <View style={styles.suggestionRow}>
+                    <MaterialIcons
+                      name="place"
+                      size={20}
+                      color="#5d5d5d"
+                      style={styles.pinIcon}
+                    />
+                    <Text style={styles.suggestionText}>{item.description}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+        </View>
 
-      <View style={styles.inputContainer}>
-        <Text>Departure Time:</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="YYYY-MM-DD HH:mm"
-          value={departureTime}
-          onChangeText={setDepartureTime}
-        />
-      </View>
+        <View style={styles.inputContainer}>
+          <Text>Departure Time:</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="YYYY-MM-DD HH:mm"
+            value={departureTime}
+            onChangeText={setDepartureTime}
+          />
+        </View>
 
-      <View style={styles.roleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.roleButton,
-            selectedRole === 'driver' && styles.selectedRole
-          ]}
-          onPress={() => setSelectedRole('driver')}
-        >
-          <Text style={styles.roleText}>🚗 Driver</Text>
+        <View style={styles.roleContainer}>
+          <TouchableOpacity
+            style={[
+              styles.roleButton,
+              selectedRole === 'driver' && styles.selectedRole,
+            ]}
+            onPress={() => setSelectedRole('driver')}
+          >
+            <Text style={styles.roleText}>🚗 Driver</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.roleButton,
+              selectedRole === 'passenger' && styles.selectedRole,
+            ]}
+            onPress={() => setSelectedRole('passenger')}
+          >
+            <Text style={styles.roleText}>👤 Passenger</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.button} onPress={handleConfirmRide}>
+          <Text style={styles.buttonText}>Confirm Ride</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.roleButton,
-            selectedRole === 'passenger' && styles.selectedRole
-          ]}
-          onPress={() => setSelectedRole('passenger')}
-        >
-          <Text style={styles.roleText}>👤 Passenger</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleConfirmRide}>
-        <Text style={styles.buttonText}>Confirm Ride</Text>
-      </TouchableOpacity>
-
-      <View style={styles.closeButtonContainer}>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
           <Text style={styles.closeText}>Close</Text>
         </TouchableOpacity>
       </View>
@@ -257,25 +292,30 @@ const BookForLater = ({ onClose }) => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    top: 0,
-    height: '88.5%',
-    width: '100%',
+    flex: 1,
     backgroundColor: 'white',
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   title: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    color: '#139beb',
+  },
+  spacer: {
+    width: 24, // To balance the back button
+  },
+  content: {
+    flex: 1,
+    padding: 20,
   },
   inputContainer: {
     marginVertical: 10,
@@ -284,40 +324,26 @@ const styles = StyleSheet.create({
     height: 40,
     color: '#5d5d5d',
     fontSize: 16,
-    fontWeight: 'bold',
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     paddingHorizontal: 10,
   },
-  suggestionItem: {
-    padding: 10,
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     backgroundColor: '#e0e0e0',
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
-    fontWeight: 'bold',
   },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
+  pinIcon: {
+    marginRight: 8,
   },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  closeButtonContainer: {
-    alignItems: 'center',
-    backgroundColor: '#ededed',
-    borderRadius: 10,
-    paddingVertical: 13,
-    paddingHorizontal: 20,
-  },
-  closeText: {
-    color: '#007AFF',
-    fontWeight: 'bold',
+  suggestionText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#5d5d5d',
   },
   roleContainer: {
     flexDirection: 'row',
@@ -339,6 +365,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    alignItems: 'center',
+    backgroundColor: '#ededed',
+    borderRadius: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  closeText: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
 });
 
-export default BookForLater;
+export default BookForLaterScreen;

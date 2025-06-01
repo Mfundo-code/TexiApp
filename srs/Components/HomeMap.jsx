@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import {
   View,
   ActivityIndicator,
@@ -14,6 +14,7 @@ import MapView, { Polyline, Marker } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import Geolocation from '@react-native-community/geolocation';
+import { AuthContext } from '../../App';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4';
 const { width } = Dimensions.get('window');
@@ -25,10 +26,13 @@ const HomeMap = ({
   drawRoute = false,
   showButtons = false
 }) => {
+  const { authToken } = useContext(AuthContext);
+
   const [coordinates, setCoordinates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [textWidth, setTextWidth] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const mapRef = useRef(null);
   const scrollAnim = useRef(new Animated.Value(0)).current;
 
@@ -160,6 +164,34 @@ const HomeMap = ({
     }
   }, [textWidth]);
 
+  // Fixed unread count fetching
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await axios.get('http://192.168.0.137:8000/api/messages/unread-count/', {
+        headers: { Authorization: `Token ${authToken}` }
+      });
+      setUnreadCount(response.data.unread_count || 0);  // Ensure 0 if null
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      setUnreadCount(0);  // Reset on error
+    }
+  }, [authToken]);
+
+  useEffect(() => {
+    if (showButtons) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadCount(0);  // Reset when not showing buttons
+    }
+  }, [showButtons, fetchUnreadCount]);
+
+  // Reset unread count on unmount
+  useEffect(() => {
+    return () => setUnreadCount(0);
+  }, []);
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -183,20 +215,27 @@ const HomeMap = ({
           </MapView>
 
           {showButtons && (
-            <> 
+            <>
               <View style={styles.marqueeContainer}>
                 <Animated.View style={{ transform: [{ translateX: scrollAnim }] }}>
                   <Text
                     style={styles.marqueeText}
                     onLayout={e => setTextWidth(e.nativeEvent.layout.width)}
                   >
-                  CodiTexi is a reliable and secure platform. Your safety is our top priority
+                    CodiTexi is a reliable and secure platform. Your safety is our top priority
                   </Text>
                 </Animated.View>
               </View>
 
               <TouchableOpacity style={styles.messagesButton} onPress={handleMessages}>
                 <Icon name="message-text" size={24} color="#2196F3" />
+                {unreadCount > 0 ? (
+                  <View style={styles.messageBadge}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Text>
+                  </View>
+                ) : null}
               </TouchableOpacity>
             </>
           )}
@@ -208,7 +247,7 @@ const HomeMap = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 665,
+    height: 605,
   },
   mapContainer: {
     flex: 1,
@@ -223,7 +262,7 @@ const styles = StyleSheet.create({
     left: 20,
     right: 80,
     height: 44,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     borderRadius: 8,
     justifyContent: 'center',
     overflow: 'hidden',
@@ -250,6 +289,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 2,
     elevation: 3,
+  },
+  messageBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

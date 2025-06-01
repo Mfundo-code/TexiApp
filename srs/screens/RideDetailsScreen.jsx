@@ -1,22 +1,21 @@
-// ParcelsScreen.js
+// RideDetailsScreen.js
 
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  FlatList,
-  StyleSheet,
-  SafeAreaView
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Alert, 
+  FlatList, 
+  StyleSheet 
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-const ParcelsScreen = () => {
+const RideDetailsScreen = () => {
   const navigation = useNavigation();
   const [fromText, setFromText] = useState('');
   const [destinationText, setDestinationText] = useState('');
@@ -24,9 +23,11 @@ const ParcelsScreen = () => {
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [destinationCoords, setDestinationCoords] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('passenger');
 
   const GOOGLE_PLACES_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4';
 
+  // Reverse geocode to get address string
   const reverseGeocode = async (latitude, longitude) => {
     try {
       const response = await axios.get(
@@ -39,6 +40,7 @@ const ParcelsScreen = () => {
     }
   };
 
+  // Fetch full coordinates from a selected place ID
   const fetchPlaceCoordinates = async (placeId) => {
     try {
       const response = await axios.get(
@@ -52,22 +54,28 @@ const ParcelsScreen = () => {
     }
   };
 
+  // On mount, get device's current location and reverse-geocode it
   useEffect(() => {
-    Geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const address = await reverseGeocode(latitude, longitude);
-        setCurrentLocation({ latitude, longitude });
-        setFromText(address);
-      },
-      (error) => Alert.alert('Error', error.message),
-      { enableHighAccuracy: false, timeout: 220000, maximumAge: 3000 }
-    );
+    const getCurrentLocation = () => {
+      Geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          const address = await reverseGeocode(latitude, longitude);
+          setCurrentLocation({ latitude, longitude });
+          setFromText(address);
+        },
+        (error) => Alert.alert('Error', error.message),
+        { enableHighAccuracy: false, timeout: 220000, maximumAge: 3000 }
+      );
+    };
+    getCurrentLocation();
   }, []);
 
+  // Fetch autocomplete suggestions from Google Places
   const fetchPlaces = async (text, isFrom) => {
     if (text.length < 2) {
-      isFrom ? setFromSuggestions([]) : setDestinationSuggestions([]);
+      if (isFrom) setFromSuggestions([]);
+      else setDestinationSuggestions([]);
       return;
     }
 
@@ -76,6 +84,7 @@ const ParcelsScreen = () => {
       const response = await axios.get(url);
       let suggestions = response.data.predictions;
 
+      // If typing into the "From" field, prepend current location
       if (isFrom && currentLocation) {
         suggestions = [
           {
@@ -87,14 +96,14 @@ const ParcelsScreen = () => {
         ];
       }
 
-      isFrom
-        ? setFromSuggestions(suggestions)
-        : setDestinationSuggestions(suggestions);
+      if (isFrom) setFromSuggestions(suggestions);
+      else setDestinationSuggestions(suggestions);
     } catch (error) {
       console.error('Error fetching places:', error);
     }
   };
 
+  // Handle selection of a place suggestion
   const handleLocationSelect = async (item, isFrom) => {
     if (item.place_id === 'current') {
       if (isFrom) {
@@ -119,7 +128,8 @@ const ParcelsScreen = () => {
     }
   };
 
-  const handleSendParcel = () => {
+  // Confirm ride: validate and navigate to SearchResults
+  const handleConfirmRide = () => {
     if (!currentLocation || !destinationCoords) {
       Alert.alert('Error', 'Please select valid locations');
       return;
@@ -127,34 +137,37 @@ const ParcelsScreen = () => {
 
     navigation.navigate('SearchResults', {
       pickup: {
-        description: fromText,
         latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude
+        longitude: currentLocation.longitude,
+        description: fromText,
       },
       dropoff: {
-        description: destinationText,
         latitude: destinationCoords.latitude,
-        longitude: destinationCoords.longitude
+        longitude: destinationCoords.longitude,
+        description: destinationText,
       },
-      rideType: 'parcel'
+      rideType: selectedRole === 'driver' ? 'offer' : 'request',
     });
   };
 
+  // Close button simply goes back
+  const handleClose = () => navigation.goBack();
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header with back arrow and title */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color="#139beb" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Send a Parcel</Text>
+        <Text style={styles.title}>Ride Details</Text>
         <View style={styles.spacer} />
       </View>
 
       {/* Main content */}
       <View style={styles.content}>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Pickup Location</Text>
+          <Text>From:</Text>
           <TextInput
             style={styles.textInput}
             placeholder="Enter pickup location"
@@ -187,7 +200,7 @@ const ParcelsScreen = () => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Destination</Text>
+          <Text>Destination:</Text>
           <TextInput
             style={styles.textInput}
             placeholder="Enter destination"
@@ -219,11 +232,37 @@ const ParcelsScreen = () => {
           )}
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleSendParcel}>
-          <Text style={styles.buttonText}>Find Driver</Text>
+        <View style={styles.roleContainer}>
+          <TouchableOpacity
+            style={[
+              styles.roleButton,
+              selectedRole === 'driver' && styles.selectedRole,
+            ]}
+            onPress={() => setSelectedRole('driver')}
+          >
+            <Text style={styles.roleText}>🚗 Driver</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.roleButton,
+              selectedRole === 'passenger' && styles.selectedRole,
+            ]}
+            onPress={() => setSelectedRole('passenger')}
+          >
+            <Text style={styles.roleText}>👤 Passenger</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.button} onPress={handleConfirmRide}>
+          <Text style={styles.buttonText}>Confirm Ride</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <Text style={styles.closeText}>Close</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -235,15 +274,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 15,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
-    backgroundColor: 'white',
   },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
+  title: {
     flex: 1,
     textAlign: 'center',
     fontSize: 20,
@@ -251,16 +287,11 @@ const styles = StyleSheet.create({
     color: '#139beb',
   },
   spacer: {
-    width: 24, // Balances the back button
+    width: 24, // To balance the back button
   },
   content: {
     flex: 1,
     padding: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 5,
   },
   inputContainer: {
     marginVertical: 10,
@@ -290,17 +321,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#5d5d5d',
   },
+  roleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 15,
+  },
+  roleButton: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  selectedRole: {
+    backgroundColor: '#139beb',
+  },
+  roleText: {
+    fontWeight: 'bold',
+    color: '#000',
+  },
   button: {
     backgroundColor: '#007AFF',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    marginBottom: 10,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
   },
+  closeButton: {
+    alignItems: 'center',
+    backgroundColor: '#ededed',
+    borderRadius: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  closeText: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
 });
 
-export default ParcelsScreen;
+export default RideDetailsScreen;

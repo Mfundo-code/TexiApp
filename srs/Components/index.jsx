@@ -24,7 +24,7 @@ const BaseComponents = ({
             onPress={onBookForLaterPress}
           >
             <FontAwesome name="bus" size={20} color="#139beb" />
-            <Text style={styles.text}>Book For Later</Text>
+            <Text style={styles.text}>Transport</Text>
           </TouchableOpacity>
           
           {/* Parcels Icon */}
@@ -45,12 +45,7 @@ const BaseComponents = ({
             onPress={onCommunityHubPress}
           >
             <FontAwesome name="users" size={20} color="#139beb" />
-            <Text style={styles.text}>Community Hub</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.iconContainer} onPress={onProfilePress}>
-            <MaterialCommunityIcons name="account" size={20} color="#139beb" />
-            <Text style={styles.text}>Profile</Text>
+            <Text style={styles.text}>Community</Text>
           </TouchableOpacity>
         </View>
       </View>
