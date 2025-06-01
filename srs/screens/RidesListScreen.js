@@ -9,7 +9,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { AuthContext } from "../../App";
+import { AuthContext } from '../../App';
 import axios from 'axios';
 
 const RidesListScreen = ({ navigation }) => {
@@ -17,10 +17,11 @@ const RidesListScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // pull token out of your existing AuthContext
+  // Keep track of which ride IDs are currently “expanded”
+  const [expandedRides, setExpandedRides] = useState({});
+
   const { authToken } = useContext(AuthContext);
 
-  // Fetch rides data from backend
   useEffect(() => {
     const fetchRides = async () => {
       try {
@@ -28,8 +29,8 @@ const RidesListScreen = ({ navigation }) => {
           'http://192.168.0.137:8000/api/rides/history/',
           {
             headers: {
-              'Authorization': `Token ${authToken}`
-            }
+              Authorization: `Token ${authToken}`,
+            },
           }
         );
         setRides(response.data);
@@ -44,7 +45,14 @@ const RidesListScreen = ({ navigation }) => {
     fetchRides();
   }, [authToken]);
 
-  // Render loading state
+  // Toggle whether a given ride card is expanded or collapsed
+  const toggleExpand = (rideId) => {
+    setExpandedRides((prev) => ({
+      ...prev,
+      [rideId]: !prev[rideId],
+    }));
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -54,15 +62,10 @@ const RidesListScreen = ({ navigation }) => {
     );
   }
 
-  // Render error state
   if (error) {
     return (
       <SafeAreaView style={styles.errorContainer}>
-        <MaterialCommunityIcons
-          name="alert-circle"
-          size={50}
-          color="#ff6b6b"
-        />
+        <MaterialCommunityIcons name="alert-circle" size={50} color="#ff6b6b" />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
@@ -77,7 +80,6 @@ const RidesListScreen = ({ navigation }) => {
     );
   }
 
-  // Render empty state
   if (rides.length === 0) {
     return (
       <SafeAreaView style={styles.emptyContainer}>
@@ -94,105 +96,115 @@ const RidesListScreen = ({ navigation }) => {
     );
   }
 
-  // Format date for display
+  // Helpers for formatting timestamps
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
-
-  // Format time for display
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
-  // Render ride item
-  const renderRideItem = ({ item }) => (
-    <View style={styles.rideCard}>
-      <View style={styles.rideHeader}>
-        <MaterialCommunityIcons
-          name={item.ride_type === 'parcel' ? 'package-variant' : 'car'}
-          size={24}
-          color="#139beb"
-        />
-        <Text style={styles.rideDate}>
-          {formatDate(item.departure_time)}
-        </Text>
-        <Text
-          style={[
-            styles.rideStatus,
-            item.is_active
-              ? styles.active
-              : item.matched_ride
-              ? styles.completed
-              : styles.cancelled
-          ]}
-        >
-          {item.is_active
-            ? 'Active'
-            : item.matched_ride
-            ? 'Closed'
-            : 'Closed'}
-        </Text>
-      </View>
+  const renderRideItem = ({ item }) => {
+    const isExpanded = !!expandedRides[item.id];
 
-      <View style={styles.rideDetail}>
-        <MaterialCommunityIcons
-          name="clock-time-four-outline"
-          size={16}
-          color="#666"
-        />
-        <Text style={styles.rideTime}>
-          {formatTime(item.departure_time)}
-        </Text>
-      </View>
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => toggleExpand(item.id)}
+      >
+        <View style={styles.rideCard}>
+          {/* Top row: icon, date, status */}
+          <View style={styles.rideHeader}>
+            <MaterialCommunityIcons
+              name={item.ride_type === 'parcel' ? 'package-variant' : 'car'}
+              size={24}
+              color="#139beb"
+            />
+            <Text style={styles.rideDate}>
+              {formatDate(item.departure_time)}
+            </Text>
+            <Text
+              style={[
+                styles.rideStatus,
+                item.is_active
+                  ? styles.active
+                  : item.matched_ride
+                  ? styles.completed
+                  : styles.cancelled,
+              ]}
+            >
+              {item.is_active ? 'Active' : 'Closed'}
+            </Text>
+          </View>
 
-      <View style={styles.rideDetail}>
-        <MaterialCommunityIcons
-          name="map-marker-outline"
-          size={16}
-          color="#666"
-        />
-        <Text style={styles.locationText}>
-          {item.pickup_name}
-        </Text>
-      </View>
+          {/* Always show departure time */}
+          <View style={styles.rideDetailRow}>
+            <MaterialCommunityIcons
+              name="clock-time-four-outline"
+              size={16}
+              color="#666"
+            />
+            <Text style={styles.rideTime}>{formatTime(item.departure_time)}</Text>
+          </View>
 
-      <View style={styles.rideDetail}>
-        <MaterialCommunityIcons
-          name="flag-checkered"
-          size={16}
-          color="#666"
-        />
-        <Text style={styles.locationText}>
-          {item.dropoff_name}
-        </Text>
-      </View>
+          {/* Additional details only when expanded */}
+          {isExpanded && (
+            <>
+              {/* Pickup location */}
+              <View style={styles.rideDetailRow}>
+                <MaterialCommunityIcons
+                  name="map-marker-outline"
+                  size={16}
+                  color="#666"
+                />
+                <Text style={styles.locationText}>
+                  {item.pickup_name}
+                </Text>
+              </View>
 
-      <View style={styles.rideFooter}>
-        <Text style={styles.rideType}>
-          {item.ride_type_display}
-        </Text>
-        {item.matched_ride && (
-          <TouchableOpacity
-            style={styles.detailsButton}
-            onPress={() =>
-              navigation.navigate('RideDetails', { rideId: item.id })
-            }
-          >
-            <Text style={styles.detailsButtonText}>Details</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
+              {/* Dropoff location */}
+              <View style={styles.rideDetailRow}>
+                <MaterialCommunityIcons
+                  name="flag-checkered"
+                  size={16}
+                  color="#666"
+                />
+                <Text style={styles.locationText}>
+                  {item.dropoff_name}
+                </Text>
+              </View>
+
+              {/* Footer: ride type and Details button if matched */}
+              <View style={styles.rideFooter}>
+                <Text style={styles.rideType}>
+                  {item.ride_type_display}
+                </Text>
+                {item.matched_ride && (
+                  <TouchableOpacity
+                    style={styles.detailsButton}
+                    onPress={() =>
+                      navigation.navigate('RideDetails', { rideId: item.id })
+                    }
+                  >
+                    <Text style={styles.detailsButtonText}>Details</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -221,53 +233,63 @@ const RidesListScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
   },
-  loadingText: { marginTop: 20, fontSize: 16, color: '#139beb' },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#139beb',
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
   },
   errorText: {
     marginTop: 20,
     fontSize: 16,
     color: '#ff6b6b',
-    textAlign: 'center'
+    textAlign: 'center',
   },
   retryButton: {
     marginTop: 20,
     paddingVertical: 10,
     paddingHorizontal: 20,
     backgroundColor: '#139beb',
-    borderRadius: 8
+    borderRadius: 8,
   },
-  retryButtonText: { color: 'white', fontWeight: 'bold' },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
   },
   emptyText: {
     marginTop: 20,
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#777'
+    color: '#777',
   },
   emptySubText: {
     marginTop: 10,
     fontSize: 14,
     color: '#999',
-    textAlign: 'center'
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -275,11 +297,19 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
-    backgroundColor: 'white'
+    backgroundColor: 'white',
   },
-  backButton: { marginRight: 16 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#139beb' },
-  listContent: { padding: 16 },
+  backButton: {
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#139beb',
+  },
+  listContent: {
+    padding: 16,
+  },
   rideCard: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -289,37 +319,54 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4
+    shadowRadius: 4,
   },
-  rideHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  rideHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   rideDate: {
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    flex: 1
+    flex: 1,
   },
   rideStatus: {
     fontSize: 14,
     fontWeight: 'bold',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10
+    borderRadius: 10,
   },
-  active: { backgroundColor: '#e6f7ff', color: '#139beb' },
-  completed: { backgroundColor: '#e8f5e9', color: '#4caf50' },
-  cancelled: { backgroundColor: '#ffebee', color: '#f44336' },
-  rideDetail: {
+  active: {
+    backgroundColor: '#e6f7ff',
+    color: '#139beb',
+  },
+  completed: {
+    backgroundColor: '#e8f5e9',
+    color: '#4caf50',
+  },
+  cancelled: {
+    backgroundColor: '#ffebee',
+    color: '#f44336',
+  },
+  rideDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4
+    marginVertical: 4,
   },
-  rideTime: { marginLeft: 8, fontSize: 14, color: '#666' },
+  rideTime: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
+  },
   locationText: {
     marginLeft: 8,
     fontSize: 14,
     color: '#444',
-    flex: 1
+    flex: 1,
   },
   rideFooter: {
     marginTop: 12,
@@ -328,16 +375,24 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
   },
-  rideType: { fontSize: 14, fontWeight: '500', color: '#666' },
+  rideType: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+  },
   detailsButton: {
     paddingVertical: 4,
     paddingHorizontal: 12,
     backgroundColor: '#e6f7ff',
-    borderRadius: 15
+    borderRadius: 15,
   },
-  detailsButtonText: { fontSize: 14, fontWeight: '500', color: '#139beb' }
+  detailsButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#139beb',
+  },
 });
 
 export default RidesListScreen;
