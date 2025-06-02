@@ -15,10 +15,15 @@ import { AuthContext } from "../../../App";
 const API_URL = "http://192.168.0.137:8000/api";
 
 export default function SignInScreen({ navigation }) {
-  const { setIsAuthenticated, setAuthToken, setUsername } = useContext(AuthContext);
+  const { 
+    setIsAuthenticated, 
+    setAuthToken, 
+    setUsername, 
+    setMode   // <-- added setMode
+  } = useContext(AuthContext);
 
-  const [email, setEmail]             = useState("");
-  const [password, setPassword]       = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSignIn = async () => {
@@ -31,10 +36,15 @@ export default function SignInScreen({ navigation }) {
 
       const json = await res.json();
       if (res.ok) {
+        // Save token, username, and mode into AsyncStorage
         await AsyncStorage.setItem("userToken", json.token);
         await AsyncStorage.setItem("username", json.username);
+        await AsyncStorage.setItem("mode", json.mode);  // <-- added
+
+        // Update context
         setAuthToken(json.token);
         setUsername(json.username);
+        setMode(json.mode);  // <-- added
         setIsAuthenticated(true);
       } else {
         Alert.alert("Sign-in failed", json.error || "Unknown error");
@@ -70,7 +80,7 @@ export default function SignInScreen({ navigation }) {
           onChangeText={setPassword}
         />
         <TouchableOpacity
-          onPress={() => setShowPassword(prev => !prev)}
+          onPress={() => setShowPassword((prev) => !prev)}
           style={styles.eyeButton}
         >
           <Ionicons
@@ -122,7 +132,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 16,
-    color: "#000",  // ensure typed text is black
+    color: "#000", // ensure typed text is black
   },
   passwordContainer: {
     flexDirection: "row",

@@ -44,7 +44,8 @@ def login_view(request):
             'user_id': user.id,
             'email': user.email,
             'username': user.username,
-            'phone': user.phone
+            'phone': user.phone,
+            'mode': user.mode 
         })
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 

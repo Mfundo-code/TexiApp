@@ -8,30 +8,39 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage'; // <-- correct AsyncStorage import
-import Ionicons from "react-native-vector-icons/Ionicons"; // <-- vector icons
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 const API_URL = "http://192.168.0.137:8000/api";
 
 export default function SignUpScreen({ navigation }) {
-  const [username, setUsername]         = useState("");
-  const [email, setEmail]               = useState("");
-  const [phone, setPhone]               = useState("");
-  const [password, setPassword]         = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedMode, setSelectedMode] = useState("passenger"); // Add this
 
   const handleSignUp = async () => {
     try {
       const res = await fetch(`${API_URL}/register/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, phone, password }),
+        body: JSON.stringify({
+          username,
+          email,
+          phone,
+          password,
+          mode: selectedMode, // Add this
+        }),
       });
 
       const json = await res.json();
       if (res.ok) {
-        // store username locally
+        // store username and mode locally if needed
         await AsyncStorage.setItem("username", username);
+        await AsyncStorage.setItem("mode", selectedMode); // Optionally store mode
+        
         Alert.alert("Success", json.message || "Account created");
         navigation.navigate("SignIn");
       } else {
@@ -87,7 +96,7 @@ export default function SignUpScreen({ navigation }) {
           autoCapitalize="none"
         />
         <TouchableOpacity
-          onPress={() => setShowPassword(prev => !prev)}
+          onPress={() => setShowPassword((prev) => !prev)}
           style={styles.eyeButton}
         >
           <Ionicons
@@ -95,6 +104,30 @@ export default function SignUpScreen({ navigation }) {
             size={24}
             color="#666"
           />
+        </TouchableOpacity>
+      </View>
+
+      {/* Add mode selection */}
+      <Text style={styles.label}>I am a:</Text>
+      <View style={styles.roleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            selectedMode === "passenger" && styles.selectedRole,
+          ]}
+          onPress={() => setSelectedMode("passenger")}
+        >
+          <Text style={styles.roleText}>👤 Passenger</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            selectedMode === "driver" && styles.selectedRole,
+          ]}
+          onPress={() => setSelectedMode("driver")}
+        >
+          <Text style={styles.roleText}>🚗 Driver</Text>
         </TouchableOpacity>
       </View>
 
@@ -137,7 +170,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   passwordContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: 16,
   },
   passwordInput: {
@@ -148,6 +181,29 @@ const styles = StyleSheet.create({
     right: 12,
     top: 13,
     padding: 8,
+  },
+  label: {
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  roleContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 10,
+  },
+  roleButton: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+    marginHorizontal: 5,
+    alignItems: "center",
+  },
+  selectedRole: {
+    backgroundColor: "#139beb",
+  },
+  roleText: {
+    fontWeight: "bold",
   },
   button: {
     height: 50,

@@ -1,6 +1,5 @@
 // RideDetailsScreen.js
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -13,21 +12,21 @@ import {
 import Geolocation from '@react-native-community/geolocation';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
+import { AuthContext } from '../../App';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const RideDetailsScreen = () => {
   const navigation = useNavigation();
+  const { authToken, mode } = useContext(AuthContext);
   const [fromText, setFromText] = useState('');
   const [destinationText, setDestinationText] = useState('');
   const [fromSuggestions, setFromSuggestions] = useState([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [destinationCoords, setDestinationCoords] = useState(null);
-  const [selectedRole, setSelectedRole] = useState('passenger');
 
   const GOOGLE_PLACES_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4';
 
-  // Reverse geocode to get address string
   const reverseGeocode = async (latitude, longitude) => {
     try {
       const response = await axios.get(
@@ -40,7 +39,6 @@ const RideDetailsScreen = () => {
     }
   };
 
-  // Fetch full coordinates from a selected place ID
   const fetchPlaceCoordinates = async (placeId) => {
     try {
       const response = await axios.get(
@@ -54,7 +52,6 @@ const RideDetailsScreen = () => {
     }
   };
 
-  // On mount, get device's current location and reverse-geocode it
   useEffect(() => {
     const getCurrentLocation = () => {
       Geolocation.getCurrentPosition(
@@ -71,7 +68,6 @@ const RideDetailsScreen = () => {
     getCurrentLocation();
   }, []);
 
-  // Fetch autocomplete suggestions from Google Places
   const fetchPlaces = async (text, isFrom) => {
     if (text.length < 2) {
       if (isFrom) setFromSuggestions([]);
@@ -84,7 +80,6 @@ const RideDetailsScreen = () => {
       const response = await axios.get(url);
       let suggestions = response.data.predictions;
 
-      // If typing into the "From" field, prepend current location
       if (isFrom && currentLocation) {
         suggestions = [
           {
@@ -103,7 +98,6 @@ const RideDetailsScreen = () => {
     }
   };
 
-  // Handle selection of a place suggestion
   const handleLocationSelect = async (item, isFrom) => {
     if (item.place_id === 'current') {
       if (isFrom) {
@@ -128,34 +122,53 @@ const RideDetailsScreen = () => {
     }
   };
 
-  // Confirm ride: validate and navigate to SearchResults
-  const handleConfirmRide = () => {
+  const handleConfirmRide = async () => {
     if (!currentLocation || !destinationCoords) {
       Alert.alert('Error', 'Please select valid locations');
       return;
     }
 
-    navigation.navigate('SearchResults', {
-      pickup: {
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        description: fromText,
-      },
-      dropoff: {
-        latitude: destinationCoords.latitude,
-        longitude: destinationCoords.longitude,
-        description: destinationText,
-      },
-      rideType: selectedRole === 'driver' ? 'offer' : 'request',
-    });
+    try {
+      // Determine ride type based on user mode
+      const rideType = mode === 'driver' ? 'offer' : 'request';
+      
+      // Set departure time to current time + 5 minutes
+      const departureTime = new Date();
+      departureTime.setMinutes(departureTime.getMinutes() + 5);
+      
+      await axios.post(
+        'http://192.168.0.137:8000/api/rides/',
+        {
+          ride_type: rideType,
+          pickup_name: fromText,
+          pickup_lat: currentLocation.latitude,
+          pickup_lng: currentLocation.longitude,
+          dropoff_name: destinationText,
+          dropoff_lat: destinationCoords.latitude,
+          dropoff_lng: destinationCoords.longitude,
+          departure_time: departureTime.toISOString(),
+        },
+        {
+          headers: {
+            Authorization: `Token ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      Alert.alert('Success', 'Ride created successfully!', [
+        { text: 'OK', onPress: handleClose },
+      ]);
+    } catch (error) {
+      console.error('Create Ride Error:', error);
+      Alert.alert('Error', 'Failed to create ride');
+    }
   };
 
-  // Close button simply goes back
   const handleClose = () => navigation.goBack();
 
   return (
     <View style={styles.container}>
-      {/* Header with back arrow and title */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color="#139beb" />
@@ -164,7 +177,6 @@ const RideDetailsScreen = () => {
         <View style={styles.spacer} />
       </View>
 
-      {/* Main content */}
       <View style={styles.content}>
         <View style={styles.inputContainer}>
           <Text>From:</Text>
@@ -232,27 +244,9 @@ const RideDetailsScreen = () => {
           )}
         </View>
 
-        <View style={styles.roleContainer}>
-          <TouchableOpacity
-            style={[
-              styles.roleButton,
-              selectedRole === 'driver' && styles.selectedRole,
-            ]}
-            onPress={() => setSelectedRole('driver')}
-          >
-            <Text style={styles.roleText}>🚗 Driver</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.roleButton,
-              selectedRole === 'passenger' && styles.selectedRole,
-            ]}
-            onPress={() => setSelectedRole('passenger')}
-          >
-            <Text style={styles.roleText}>👤 Passenger</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.modeText}>
+          You're creating a ride as a {mode === 'driver' ? '🚗 Driver' : '👤 Passenger'}
+        </Text>
 
         <TouchableOpacity style={styles.button} onPress={handleConfirmRide}>
           <Text style={styles.buttonText}>Confirm Ride</Text>
@@ -287,7 +281,7 @@ const styles = StyleSheet.create({
     color: '#139beb',
   },
   spacer: {
-    width: 24, // To balance the back button
+    width: 24,
   },
   content: {
     flex: 1,
@@ -321,25 +315,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#5d5d5d',
   },
-  roleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  modeText: {
+    textAlign: 'center',
     marginVertical: 15,
-  },
-  roleButton: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    marginHorizontal: 5,
-    alignItems: 'center',
-  },
-  selectedRole: {
-    backgroundColor: '#139beb',
-  },
-  roleText: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#000',
   },
   button: {
     backgroundColor: '#007AFF',

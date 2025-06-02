@@ -1,5 +1,4 @@
 // BookForLaterScreen.js
-
 import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
@@ -12,25 +11,25 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Geolocation from '@react-native-community/geolocation';
-import dayjs from 'dayjs';
 import axios from 'axios';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AuthContext } from '../../App';
+import dayjs from 'dayjs'; // Import dayjs
 
 const BookForLaterScreen = () => {
   const navigation = useNavigation();
-  const { authToken } = useContext(AuthContext);
+  const { authToken, mode } = useContext(AuthContext);
 
   const [fromText, setFromText] = useState('');
   const [destinationText, setDestinationText] = useState('');
+  // Initialize with current date/time using dayjs
   const [departureTime, setDepartureTime] = useState(dayjs().format('YYYY-MM-DD HH:mm'));
   const [fromSuggestions, setFromSuggestions] = useState([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [destinationCoords, setDestinationCoords] = useState(null);
-  const [selectedRole, setSelectedRole] = useState('passenger');
 
-  const GOOGLE_PLACES_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4'; // Replace with your actual key
+  const GOOGLE_PLACES_API_KEY = 'AIzaSyC6a16EquAV6hWaRw4ZAmK222WLmpfncU4';
 
   const reverseGeocode = async (latitude, longitude) => {
     try {
@@ -133,9 +132,27 @@ const BookForLaterScreen = () => {
       return;
     }
 
-    try {
-      const rideType = selectedRole === 'driver' ? 'offer' : 'request';
+    // Validate date format (YYYY-MM-DD HH:mm)
+    const dateRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+    if (!dateRegex.test(departureTime)) {
+      Alert.alert('Error', 'Please use format: YYYY-MM-DD HH:mm');
+      return;
+    }
 
+    // Validate if departure time is in the future
+    const selectedTime = dayjs(departureTime, 'YYYY-MM-DD HH:mm');
+    if (selectedTime.isBefore(dayjs())) {
+      Alert.alert('Error', 'Departure time must be in the future');
+      return;
+    }
+
+    try {
+      // Determine ride type based on user mode
+      const rideType = mode === 'driver' ? 'offer' : 'request';
+      
+      // Convert to ISO string format
+      const isoTime = selectedTime.toISOString();
+      
       await axios.post(
         'http://192.168.0.137:8000/api/rides/',
         {
@@ -146,7 +163,7 @@ const BookForLaterScreen = () => {
           dropoff_name: destinationText,
           dropoff_lat: destinationCoords.latitude,
           dropoff_lng: destinationCoords.longitude,
-          departure_time: dayjs(departureTime).toISOString(),
+          departure_time: isoTime,
         },
         {
           headers: {
@@ -169,7 +186,6 @@ const BookForLaterScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header with back arrow and title */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color="#139beb" />
@@ -178,7 +194,6 @@ const BookForLaterScreen = () => {
         <View style={styles.spacer} />
       </View>
 
-      {/* Main content */}
       <View style={styles.content}>
         <View style={styles.inputContainer}>
           <Text>From:</Text>
@@ -247,36 +262,19 @@ const BookForLaterScreen = () => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text>Departure Time:</Text>
+          <Text>Departure Time (YYYY-MM-DD HH:mm):</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="YYYY-MM-DD HH:mm"
+            placeholder="Example: 2023-12-31 14:30"
+            placeholderTextColor="gray"
             value={departureTime}
             onChangeText={setDepartureTime}
           />
         </View>
 
-        <View style={styles.roleContainer}>
-          <TouchableOpacity
-            style={[
-              styles.roleButton,
-              selectedRole === 'driver' && styles.selectedRole,
-            ]}
-            onPress={() => setSelectedRole('driver')}
-          >
-            <Text style={styles.roleText}>🚗 Driver</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.roleButton,
-              selectedRole === 'passenger' && styles.selectedRole,
-            ]}
-            onPress={() => setSelectedRole('passenger')}
-          >
-            <Text style={styles.roleText}>👤 Passenger</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.modeText}>
+          You're creating a ride as a {mode === 'driver' ? '🚗 Driver' : '👤 Passenger'}
+        </Text>
 
         <TouchableOpacity style={styles.button} onPress={handleConfirmRide}>
           <Text style={styles.buttonText}>Confirm Ride</Text>
@@ -311,7 +309,7 @@ const styles = StyleSheet.create({
     color: '#139beb',
   },
   spacer: {
-    width: 24, // To balance the back button
+    width: 24,
   },
   content: {
     flex: 1,
@@ -345,25 +343,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#5d5d5d',
   },
-  roleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  modeText: {
+    textAlign: 'center',
     marginVertical: 15,
-  },
-  roleButton: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    marginHorizontal: 5,
-    alignItems: 'center',
-  },
-  selectedRole: {
-    backgroundColor: '#139beb',
-  },
-  roleText: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#5d5d5d',
+    
   },
   button: {
     backgroundColor: '#007AFF',
@@ -388,6 +374,11 @@ const styles = StyleSheet.create({
   closeText: {
     color: '#007AFF',
     fontWeight: 'bold',
+  },
+  hintText: {
+    fontSize: 12,
+    color: 'gray',
+    marginTop: 4,
   },
 });
 
