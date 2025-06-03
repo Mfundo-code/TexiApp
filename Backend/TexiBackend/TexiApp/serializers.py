@@ -1,3 +1,4 @@
+# serializers.py
 from rest_framework import serializers
 from .models import CustomUser, Ride, Message, Post, Comment
 
@@ -20,8 +21,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class RideSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
-    phone = serializers.CharField(source='user.phone', read_only=True)
+    username = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
     ride_type_display = serializers.CharField(
         source='get_ride_type_display', 
         read_only=True
@@ -36,6 +37,12 @@ class RideSerializer(serializers.ModelSerializer):
             'departure_time', 'created_at', 'is_active'
         ]
         read_only_fields = ['user', 'created_at']
+    
+    def get_username(self, obj):
+        return obj.user.username if obj.user else "Deleted User"
+    
+    def get_phone(self, obj):
+        return obj.user.phone if obj.user else "N/A"
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.username', read_only=True)
@@ -43,8 +50,8 @@ class MessageSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Message
-        fields = ['id', 'content', 'timestamp', 'sender_name', 'is_me', 'is_read']  # Added is_read
-        read_only_fields = ['sender', 'recipient', 'timestamp', 'is_read']  # Make is_read read-only
+        fields = ['id', 'content', 'timestamp', 'sender_name', 'is_me', 'is_read']
+        read_only_fields = ['sender', 'recipient', 'timestamp', 'is_read']
     
     def get_is_me(self, obj):
         return obj.sender == self.context['request'].user

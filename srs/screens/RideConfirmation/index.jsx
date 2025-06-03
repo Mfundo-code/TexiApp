@@ -1,9 +1,7 @@
-// RideConfirmation.js
-import React, { useState, useContext, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { 
   View, 
   StyleSheet, 
-  Alert, 
   ActivityIndicator, 
   Text, 
   Linking,
@@ -18,12 +16,12 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 const RideConfirmation = ({ route, navigation }) => {
   const { authToken } = useContext(AuthContext);
   const { pickup, dropoff, rideType } = route.params;
+
   const [matchingRide, setMatchingRide] = useState(null);
-  const [previousMatches, setPreviousMatches] = useState([]);
   const [eta, setETA] = useState("");
-  const [isAccepted, setIsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [rideSaved, setRideSaved] = useState(false);
+
   const pollingCountRef = useRef(0);
   const MAX_POLL_ATTEMPTS = 2;
   const intervalRef = useRef(null);
@@ -72,6 +70,7 @@ const RideConfirmation = ({ route, navigation }) => {
 
   const checkForMatch = async (rideId) => {
     pollingCountRef.current += 1;
+
     try {
       const { data } = await axios.get(
         `http://192.168.0.137:8000/api/rides/${rideId}/matches/`,
@@ -79,9 +78,10 @@ const RideConfirmation = ({ route, navigation }) => {
       );
 
       if (data.match) {
+        // Stop polling immediately
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-        
+
         const matched = {
           ...data.match,
           user: {
@@ -90,26 +90,23 @@ const RideConfirmation = ({ route, navigation }) => {
             phone: data.match.user.phone,
           },
         };
-        
+
         const rideEta = calculateETA(pickup, {
           latitude: matched.pickup.lat,
           longitude: matched.pickup.lng,
         });
         setETA(rideEta);
-        
         setMatchingRide(matched);
         setIsLoading(false);
+
       } else if (pollingCountRef.current >= MAX_POLL_ATTEMPTS) {
+        // No match found within max attempts → ride is auto-saved
         clearInterval(intervalRef.current);
         intervalRef.current = null;
         setRideSaved(true);
         setIsLoading(false);
-        
-        const message = rideType === 'request' || rideType === 'parcel'
-          ? "No driver found yet. Your ride is saved and a driver will communicate with you."
-          : "No passenger found yet. Your ride offer is saved and a passenger will communicate with you.";
-        
-        Alert.alert("Ride Saved", message);
+
+        // No more Alert here, because the UI already shows saved state
       }
     } catch (pollError) {
       console.error("Error checking matches:", pollError);
@@ -121,11 +118,12 @@ const RideConfirmation = ({ route, navigation }) => {
 
   const createAndStartPolling = async () => {
     try {
+      // If somehow an existing interval exists, clear it
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      
+
       setIsLoading(true);
       pollingCountRef.current = 0;
 
@@ -150,6 +148,8 @@ const RideConfirmation = ({ route, navigation }) => {
 
       const rideId = createResponse.data.id;
       currentRideIdRef.current = rideId;
+
+      // Poll every 5 seconds
       intervalRef.current = setInterval(() => checkForMatch(rideId), 5000);
     } catch (error) {
       console.error("Ride creation error:", error);
@@ -165,65 +165,31 @@ const RideConfirmation = ({ route, navigation }) => {
     }
   };
 
-  const handleReload = async () => {
-    if (isAccepted || rideSaved) return;
-    
-    if (matchingRide) {
-      setPreviousMatches(prev => [...prev, matchingRide]);
-    }
-    
-    setMatchingRide(null);
-    setRideSaved(false);
-    
-    await createAndStartPolling();
-  };
-
-  const handlePrevious = () => {
-    if (previousMatches.length === 0 || isAccepted || rideSaved) return;
-    
-    const lastMatch = previousMatches[previousMatches.length - 1];
-    setMatchingRide(lastMatch);
-    setPreviousMatches(prev => prev.slice(0, -1));
-    
-    const prevEta = calculateETA(pickup, {
-      latitude: lastMatch.pickup.lat,
-      longitude: lastMatch.pickup.lng,
-    });
-    setETA(prevEta);
-  };
-
-  const handleDone = () => {
-    setIsAccepted(true);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    navigation.navigate('Home');
-  };
-
   const handleMessagePress = () => {
     if (matchingRide && matchingRide.user) {
-      navigation.navigate('MessageScreen', { 
+      navigation.navigate("MessageScreen", {
         recipient: {
           id: matchingRide.user.id,
           username: matchingRide.user.name,
           phone: matchingRide.user.phone,
-        }
+        },
       });
     }
   };
 
-  // Initial ride creation
+  const handleDone = () => {
+    // Simply navigate home—no further accept/confirm step
+    navigation.navigate("Home");
+  };
+
   useEffect(() => {
     createAndStartPolling();
-    
+
     return () => {
+      // On unmount, just clear polling interval; do NOT delete the ride
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
-      }
-      
-      if (currentRideIdRef.current && !isAccepted && !rideSaved) {
-        deleteRide(currentRideIdRef.current);
+        intervalRef.current = null;
       }
     };
   }, []);
@@ -242,26 +208,26 @@ const RideConfirmation = ({ route, navigation }) => {
   }
 
   if (rideSaved) {
+    // Ride was auto-saved after polling attempts
     return (
       <View style={styles.savedContainer}>
         <Icon name="check-circle" size={60} color="#4CAF50" />
         <Text style={styles.savedTitle}>Ride Saved Successfully!</Text>
         <Text style={styles.savedText}>
-          {rideType === 'request' || rideType === 'parcel'
-            ? "A driver will contact you when available"
-            : "A passenger will contact you when available"}
+          {rideType === "request" || rideType === "parcel"
+            ? "A driver will contact you when available."
+            : "A passenger will contact you when available."}
         </Text>
-        
-        <TouchableOpacity
-          style={styles.savedDoneButton}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={styles.savedDoneButtonText}>Done</Text>
+
+        <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
+          <Icon name="check" size={24} color="#fff" />
+          <Text style={styles.doneButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // At this point, matchingRide is non-null (a match was found)
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>
@@ -281,52 +247,9 @@ const RideConfirmation = ({ route, navigation }) => {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={[styles.button, styles.reloadButton]}
-            onPress={handleReload}
-            disabled={isAccepted}
-          >
-            <Icon 
-              name="refresh" 
-              size={24} 
-              color={isAccepted ? "#aaa" : "#139beb"} 
-            />
-            <Text style={[styles.buttonText, isAccepted && styles.disabledText]}>
-              Reload
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.previousButton]}
-            onPress={handlePrevious}
-            disabled={previousMatches.length === 0 || isAccepted}
-          >
-            <Icon 
-              name="step-backward" 
-              size={24} 
-              color={previousMatches.length === 0 || isAccepted ? "#aaa" : "#139beb"} 
-            />
-            <Text style={[
-              styles.buttonText, 
-              (previousMatches.length === 0 || isAccepted) && styles.disabledText
-            ]}>
-              Previous
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.doneButton]}
-            onPress={handleDone}
-            disabled={isAccepted}
-          >
-            <Icon 
-              name="check" 
-              size={24} 
-              color={isAccepted ? "#aaa" : "#139beb"} 
-            />
-            <Text style={[styles.buttonText, isAccepted && styles.disabledText]}>
-              Done
-            </Text>
+          <TouchableOpacity style={[styles.button, styles.doneButton]} onPress={handleDone}>
+            <Icon name="check" size={24} color="#fff" />
+            <Text style={styles.doneButtonText}>Done</Text>
           </TouchableOpacity>
         </View>
 
@@ -348,35 +271,39 @@ const styles = StyleSheet.create({
   },
   savedContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   savedTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginVertical: 10,
-    color: '#333',
+    color: "#333",
   },
   savedText: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 30,
-    color: '#666',
+    color: "#666",
     paddingHorizontal: 20,
   },
-  savedDoneButton: {
-    backgroundColor: '#139beb',
-    padding: 15,
+  doneButton: {
+    flexDirection: "row",
+    backgroundColor: "#139beb",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 8,
-    width: '80%',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+    width: "97%",
   },
-  savedDoneButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  doneButtonText: {
+    color: "white",
+    fontWeight: "bold",
     fontSize: 16,
+    marginLeft: 8,
   },
   loader: {
     marginTop: 50,
@@ -388,45 +315,31 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   etaContainer: {
-    padding: 10,
+    padding: 6,
     backgroundColor: "#f0f8ff",
     alignItems: "center",
   },
   etaText: {
     fontSize: 18,
-    fontWeight: "bold",
     color: "#75797d",
   },
   contentContainer: {
     flex: 1,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "center",
     padding: 2,
     backgroundColor: "#f0f8ff",
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
     marginBottom: 1,
-    height: 48,
   },
   button: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 8,
     marginHorizontal: 5,
     marginTop: 1,
-  },
-  buttonText: {
-    color: '#139beb',
-    marginLeft: 8,
-    fontWeight: 'bold',
-  },
-  disabledText: {
-    color: '#aaa',
   },
 });
 

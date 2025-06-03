@@ -19,7 +19,7 @@ export default function SignInScreen({ navigation }) {
     setIsAuthenticated, 
     setAuthToken, 
     setUsername, 
-    setMode   // <-- added setMode
+    setMode  
   } = useContext(AuthContext);
 
   const [email, setEmail] = useState("");
@@ -39,12 +39,12 @@ export default function SignInScreen({ navigation }) {
         // Save token, username, and mode into AsyncStorage
         await AsyncStorage.setItem("userToken", json.token);
         await AsyncStorage.setItem("username", json.username);
-        await AsyncStorage.setItem("mode", json.mode);  // <-- added
+        await AsyncStorage.setItem("mode", json.mode);
 
         // Update context
         setAuthToken(json.token);
         setUsername(json.username);
-        setMode(json.mode);  // <-- added
+        setMode(json.mode);
         setIsAuthenticated(true);
       } else {
         Alert.alert("Sign-in failed", json.error || "Unknown error");
@@ -68,10 +68,10 @@ export default function SignInScreen({ navigation }) {
         onChangeText={setEmail}
       />
 
-      {/* Password input with eye toggle */}
+      {/* Password input with eye toggle on a straight line */}
       <View style={styles.passwordContainer}>
         <TextInput
-          style={[styles.input, { flex: 1 }]}
+          style={styles.passwordInput}
           placeholder="Password"
           placeholderTextColor="#999"
           secureTextEntry={!showPassword}
@@ -101,13 +101,6 @@ export default function SignInScreen({ navigation }) {
       >
         <Text style={styles.linkText}>Create Account</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.link}
-        onPress={() => navigation.navigate("ForgotPassword")}
-      >
-        <Text style={styles.linkText}>Forgot Password?</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -132,16 +125,30 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 16,
-    color: "#000", // ensure typed text is black
+    color: "#000",
   },
+  // Updated password container to wrap both TextInput and icon with one border
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    backgroundColor: "#fff",
   },
+  // The TextInput inside shares the container’s height and takes up all available space
+  passwordInput: {
+    flex: 1,
+    color: "#000",
+    height: "100%",
+  },
+  // Simple left margin so the icon sits to the right of the TextInput
   eyeButton: {
-    position: "absolute",
-    right: 12,
-    padding: 8,
+    marginLeft: 8,
+    padding: 4,
   },
   button: {
     height: 50,

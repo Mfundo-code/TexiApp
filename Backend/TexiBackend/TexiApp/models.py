@@ -57,7 +57,13 @@ class Ride(models.Model):
         ('offer', 'Ride Offer'),
         ('parcel', 'Parcel Delivery'),
     ]
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    # Changed on_delete from CASCADE to SET_NULL, and allow null/blank
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.SET_NULL,  
+        null=True,
+        blank=True
+    )
     ride_type = models.CharField(max_length=10, choices=RIDE_TYPE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
     departure_time = models.DateTimeField(default=timezone.now)
@@ -78,7 +84,7 @@ class Ride(models.Model):
     expires_at = models.DateTimeField(default=timezone.now)  # New expiration field
     
     def __str__(self):
-        return f"{self.user.email} – {self.get_ride_type_display()}"
+        return f"{self.user.email if self.user else 'Unknown User'} – {self.get_ride_type_display()}"
     
     @staticmethod
     def calculate_distance(lat1, lon1, lat2, lon2):
@@ -164,7 +170,7 @@ class Ride(models.Model):
         return route_dist, abs(cross_track), along_track
 
     def is_point_acceptable(self, driver_ride, point_type='pickup'):
-        """ Check if point lies within 30% deviation from driver's route """
+        """ Check if point lies within dynamic deviation from driver's route """
         if point_type == 'pickup':
             c_lat, c_lon = self.pickup_lat, self.pickup_lng
         else:
@@ -175,7 +181,19 @@ class Ride(models.Model):
             driver_ride.dropoff_lat, driver_ride.dropoff_lng,
             c_lat, c_lon
         )
-        max_dev = route_dist * 0.30
+        
+        # Dynamic deviation thresholds based on driver's route distance
+        if route_dist > 100:
+            max_dev_percent = 0.12
+        elif route_dist > 50:  # 50-100 km
+            max_dev_percent = 0.20
+        elif route_dist > 30:  # 30-50 km
+            max_dev_percent = 0.25
+        else:  # <= 30 km
+            max_dev_percent = 0.30
+            
+        max_dev = route_dist * max_dev_percent
+        
         return cross_dist <= max_dev and 0 <= along_dist <= route_dist
 
     def find_matches(self, max_deviation_percent=10):

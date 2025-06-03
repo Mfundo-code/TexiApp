@@ -269,4 +269,4 @@ def unread_message_count(request):
         recipient=request.user,
         is_read=False
     ).count()
-    return Response({'unread_count': count or 0})  # Ensure 0 is returned
+    return Response({'unread_count': count or 0})  

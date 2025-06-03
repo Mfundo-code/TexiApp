@@ -1,4 +1,3 @@
-// RideDetailsScreen.js
 import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
@@ -122,47 +121,26 @@ const RideDetailsScreen = () => {
     }
   };
 
-  const handleConfirmRide = async () => {
+  // Updated: Navigate to SearchResults instead of backend call
+  const handleConfirmRide = () => {
     if (!currentLocation || !destinationCoords) {
       Alert.alert('Error', 'Please select valid locations');
       return;
     }
 
-    try {
-      // Determine ride type based on user mode
-      const rideType = mode === 'driver' ? 'offer' : 'request';
-      
-      // Set departure time to current time + 5 minutes
-      const departureTime = new Date();
-      departureTime.setMinutes(departureTime.getMinutes() + 5);
-      
-      await axios.post(
-        'http://192.168.0.137:8000/api/rides/',
-        {
-          ride_type: rideType,
-          pickup_name: fromText,
-          pickup_lat: currentLocation.latitude,
-          pickup_lng: currentLocation.longitude,
-          dropoff_name: destinationText,
-          dropoff_lat: destinationCoords.latitude,
-          dropoff_lng: destinationCoords.longitude,
-          departure_time: departureTime.toISOString(),
-        },
-        {
-          headers: {
-            Authorization: `Token ${authToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+    const rideType = mode === 'driver' ? 'offer' : 'request';
 
-      Alert.alert('Success', 'Ride created successfully!', [
-        { text: 'OK', onPress: handleClose },
-      ]);
-    } catch (error) {
-      console.error('Create Ride Error:', error);
-      Alert.alert('Error', 'Failed to create ride');
-    }
+    navigation.navigate('SearchResults', {
+      pickup: {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      },
+      dropoff: {
+        latitude: destinationCoords.latitude,
+        longitude: destinationCoords.longitude,
+      },
+      rideType: rideType,
+    });
   };
 
   const handleClose = () => navigation.goBack();
@@ -320,6 +298,7 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     fontSize: 16,
     fontWeight: 'bold',
+     color: '#5d5d5d',
   },
   button: {
     backgroundColor: '#007AFF',
