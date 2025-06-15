@@ -1,4 +1,3 @@
-# models.py
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser, PermissionsMixin, BaseUserManager
@@ -32,7 +31,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     ]
     username = models.CharField(max_length=100, unique=True)
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=15, unique=True)
+    phone = models.CharField(max_length=20, unique=True)  # Increased from 15 to 20
     mode = models.CharField(
         max_length=10, 
         choices=MODE_CHOICES, 
@@ -42,12 +41,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
-    
+    confirmation_code = models.CharField(max_length=6, blank=True, null=True)
+    confirmation_sent_at = models.DateTimeField(null=True, blank=True)
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'phone']
-    
+
     objects = CustomUserManager()
-    
+
     def __str__(self):
         return self.email
 
@@ -57,7 +58,6 @@ class Ride(models.Model):
         ('offer', 'Ride Offer'),
         ('parcel', 'Parcel Delivery'),
     ]
-    # Changed on_delete from CASCADE to SET_NULL, and allow null/blank
     user = models.ForeignKey(
         CustomUser, 
         on_delete=models.SET_NULL,  
@@ -73,7 +73,7 @@ class Ride(models.Model):
     dropoff_name = models.CharField(max_length=255)
     dropoff_lat = models.FloatField()
     dropoff_lng = models.FloatField()
-    _is_active = models.BooleanField(default=True, db_column='is_active')  # Renamed field
+    _is_active = models.BooleanField(default=True, db_column='is_active')
     matched_ride = models.ForeignKey(
         'self', 
         on_delete=models.SET_NULL, 
@@ -81,15 +81,14 @@ class Ride(models.Model):
         blank=True, 
         related_name='matches'
     )
-    expires_at = models.DateTimeField(default=timezone.now)  # New expiration field
+    expires_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"{self.user.email if self.user else 'Unknown User'} – {self.get_ride_type_display()}"
     
     @staticmethod
     def calculate_distance(lat1, lon1, lat2, lon2):
-        """Calculate distance between two points in kilometers"""
-        R = 6371  # Earth radius in km
+        R = 6371
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
         dlon = lon2 - lon1
         dlat = lat2 - lat1
@@ -98,8 +97,7 @@ class Ride(models.Model):
         return R * c
 
     def save(self, *args, **kwargs):
-        """Set expiration time when creating a new ride"""
-        if not self.pk:  # Only on creation
+        if not self.pk:
             distance = self.calculate_distance(
                 self.pickup_lat, self.pickup_lng,
                 self.dropoff_lat, self.dropoff_lng
@@ -120,39 +118,32 @@ class Ride(models.Model):
 
     @property
     def is_expired(self):
-        """Check if ride has expired based on time"""
         return timezone.now() > self.expires_at
 
     @property
     def is_active(self):
-        """Computed property that considers both manual flag and expiration"""
         return self._is_active and not self.is_expired
     
     @is_active.setter
     def is_active(self, value):
-        """Setter for the underlying field"""
         self._is_active = value
 
     @staticmethod
     def calculate_route_metrics(a_lat, a_lon, b_lat, b_lon, c_lat, c_lon):
-        """ Calculate route distance A→B, cross-track and along-track distances for point C. """
         a_lat, a_lon = radians(a_lat), radians(a_lon)
         b_lat, b_lon = radians(b_lat), radians(b_lon)
         c_lat, c_lon = radians(c_lat), radians(c_lon)
-        R = 6371  # Earth radius in km
+        R = 6371
         
-        # A→B distance
         dlon_ab = b_lon - a_lon
         dlat_ab = b_lat - a_lat
         a_ab = sin(dlat_ab/2)**2 + cos(a_lat)*cos(b_lat)*sin(dlon_ab/2)**2
         route_dist = 2 * R * atan2(sqrt(a_ab), sqrt(1 - a_ab))
         
-        # Bearing A→B
         y_ab = sin(dlon_ab)*cos(b_lat)
         x_ab = cos(a_lat)*sin(b_lat) - sin(a_lat)*cos(b_lat)*cos(dlon_ab)
         bearing_ab = atan2(y_ab, x_ab)
         
-        # A→C distance & bearing
         dlon_ac = c_lon - a_lon
         dlat_ac = c_lat - a_lat
         a_ac = sin(dlat_ac/2)**2 + cos(a_lat)*cos(c_lat)*sin(dlon_ac/2)**2
@@ -161,16 +152,13 @@ class Ride(models.Model):
         x_ac = cos(a_lat)*sin(c_lat) - sin(a_lat)*cos(c_lat)*cos(dlon_ac)
         bearing_ac = atan2(y_ac, x_ac)
         
-        # Cross-track distance
         delta_bearing = bearing_ac - bearing_ab
         cross_track = asin(sin(dist_ac/R)*sin(delta_bearing)) * R
         
-        # Along-track distance
         along_track = acos(cos(dist_ac/R)/cos(cross_track/R)) * R
         return route_dist, abs(cross_track), along_track
 
     def is_point_acceptable(self, driver_ride, point_type='pickup'):
-        """ Check if point lies within dynamic deviation from driver's route """
         if point_type == 'pickup':
             c_lat, c_lon = self.pickup_lat, self.pickup_lng
         else:
@@ -182,14 +170,13 @@ class Ride(models.Model):
             c_lat, c_lon
         )
         
-        # Dynamic deviation thresholds based on driver's route distance
         if route_dist > 100:
             max_dev_percent = 0.12
-        elif route_dist > 50:  # 50-100 km
+        elif route_dist > 50:
             max_dev_percent = 0.20
-        elif route_dist > 30:  # 30-50 km
+        elif route_dist > 30:
             max_dev_percent = 0.25
-        else:  # <= 30 km
+        else:
             max_dev_percent = 0.30
             
         max_dev = route_dist * max_dev_percent
@@ -197,19 +184,15 @@ class Ride(models.Model):
         return cross_dist <= max_dev and 0 <= along_dist <= route_dist
 
     def find_matches(self, max_deviation_percent=10):
-        """ Find best matching ride of compatible types """
-        # Driver offers match with both passengers and parcels
         if self.ride_type == 'offer':
             target_types = ['request', 'parcel']
-        # Passengers and parcels only match with driver offers
         else:
             target_types = ['offer']
         
-        # Add expiration check to query
         candidates = Ride.objects.filter(
             ride_type__in=target_types,
-            _is_active=True,  # Use the underlying field
-            expires_at__gt=timezone.now()  # Not expired
+            _is_active=True,
+            expires_at__gt=timezone.now()
         ).exclude(user=self.user)
         
         scored = []
@@ -244,7 +227,7 @@ class Message(models.Model):
     )
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)  # New field
+    is_read = models.BooleanField(default=False)
     
     def __str__(self):
         return f"{self.sender} to {self.recipient}: {self.content[:20]}"

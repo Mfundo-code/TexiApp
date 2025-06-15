@@ -1,9 +1,12 @@
-# serializers.py
 from rest_framework import serializers
 from .models import CustomUser, Ride, Message, Post, Comment
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        style={'input_type': 'password'}
+    )
     mode = serializers.ChoiceField(
         choices=CustomUser.MODE_CHOICES,
         required=False

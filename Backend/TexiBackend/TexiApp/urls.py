@@ -3,12 +3,15 @@ from .views import (
     RegisterView, login_view, logout_view, 
     RideListCreateView, RideDetailView, RideMatchesView,
     ChatListView, CommunityHubView, PostCommentsView,
-    MessageListView, MessageDetailView, RideHistoryView,
-    unread_message_count,  # newly added import
+    MessageListView, MessageDetailView, RideHistoryView, ResendCodeView,
+    unread_message_count, ConfirmEmailView, PasswordResetView
 )
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
+    path('resend-code/', ResendCodeView.as_view(), name='resend-code'),
+    path('confirm-email/', ConfirmEmailView.as_view(), name='confirm-email'),
+    path('password-reset/', PasswordResetView.as_view(), name='password-reset'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     
@@ -19,7 +22,7 @@ urlpatterns = [
 
     path('messages/', MessageListView.as_view(), name='message-list'),
     path('messages/<int:user_id>/', MessageDetailView.as_view(), name='message-detail'),
-    path('messages/unread-count/', unread_message_count, name='unread-count'),  # new endpoint
+    path('messages/unread-count/', unread_message_count, name='unread-count'),
 
     path('chats/', ChatListView.as_view(), name='chat-list'),
     

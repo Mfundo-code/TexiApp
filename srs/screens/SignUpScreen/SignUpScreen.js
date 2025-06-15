@@ -1,4 +1,3 @@
-// SignUpScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -15,7 +14,6 @@ import * as RNLocalize from "react-native-localize";
 
 const API_URL = "http://192.168.0.137:8000/api";
 
-// Country data with dial codes and flags
 const COUNTRIES = [
   { name: "South Africa", code: "ZA", dial_code: "+27", flag: "🇿🇦" },
   { name: "Zambia", code: "ZM", dial_code: "+260", flag: "🇿🇲" },
@@ -40,11 +38,10 @@ export default function SignUpScreen({ navigation }) {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [filteredCountries, setFilteredCountries] = useState(COUNTRIES);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Auto-detect user's country using react-native-localize
   useEffect(() => {
     const detectCountry = () => {
-      // getCountry() returns an ISO country code like "ZA", "US", etc.
       const deviceCountryCode = RNLocalize.getCountry() || "ZA";
       const country =
         COUNTRIES.find(c => c.code === deviceCountryCode) || COUNTRIES[0];
@@ -54,17 +51,23 @@ export default function SignUpScreen({ navigation }) {
     detectCountry();
   }, []);
 
+  const validateForm = () => {
+    if (!username.trim()) return "Username is required";
+    if (!/^\S+@\S+\.\S+$/.test(email)) return "Invalid email address";
+    if (!selectedCountry || !phone) return "Phone number is required";
+    if (password.length < 8) return "Password must be at least 8 characters";
+    if (!selectedMode) return "Please select your role";
+    return null;
+  };
+
   const handleSignUp = async () => {
-    if (!selectedMode) {
-      Alert.alert("Registration failed", "Please select a role (Passenger or Driver).");
+    const error = validateForm();
+    if (error) {
+      Alert.alert("Validation Error", error);
       return;
     }
 
-    if (!selectedCountry || !phone) {
-      Alert.alert("Registration failed", "Please enter a valid phone number.");
-      return;
-    }
-
+    setIsLoading(true);
     try {
       const fullPhone = `${selectedCountry.dial_code}${phone}`;
 
@@ -82,22 +85,31 @@ export default function SignUpScreen({ navigation }) {
 
       const json = await res.json();
       if (res.ok) {
-        await AsyncStorage.setItem("username", username);
-        await AsyncStorage.setItem("mode", selectedMode);
-
-        Alert.alert("Success", json.message || "Account created");
-        navigation.navigate("SignIn");
+        navigation.navigate("EmailConfirmation", { 
+          email,
+          username,
+          mode: selectedMode,
+        });
       } else {
-        const errs = Object.values(json).flat().join("\n");
-        Alert.alert("Registration failed", errs);
+        // Handle backend validation errors
+        let errorMessage = "Registration failed";
+        if (json.email) errorMessage = json.email[0];
+        if (json.phone) errorMessage = json.phone[0];
+        if (json.username) errorMessage = json.username[0];
+        if (json.password) errorMessage = json.password[0];
+        
+        Alert.alert("Registration Error", errorMessage);
       }
     } catch (error) {
-      Alert.alert("Error", error.message);
+      Alert.alert("Error", "Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const toggleRoleDropdown = () => {
     setRoleDropdownVisible(prev => !prev);
+    if (countryPickerVisible) setCountryPickerVisible(false);
   };
 
   const pickRole = role => {
@@ -107,6 +119,7 @@ export default function SignUpScreen({ navigation }) {
 
   const toggleCountryPicker = () => {
     setCountryPickerVisible(prev => !prev);
+    if (roleDropdownVisible) setRoleDropdownVisible(false);
   };
 
   const selectCountry = country => {
@@ -152,7 +165,6 @@ export default function SignUpScreen({ navigation }) {
         onChangeText={setEmail}
       />
 
-      {/* Phone number with country code selector */}
       <View style={styles.phoneContainer}>
         <TouchableOpacity 
           style={styles.countrySelector}
@@ -207,11 +219,10 @@ export default function SignUpScreen({ navigation }) {
         </View>
       )}
 
-      {/* Password field with eye toggle on a straight line */}
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.passwordInput}
-          placeholder="Password"
+          placeholder="Password (min 8 characters)"
           placeholderTextColor="#999"
           secureTextEntry={!showPassword}
           value={password}
@@ -230,13 +241,12 @@ export default function SignUpScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Role selection */}
       <TouchableOpacity
         style={styles.input} 
         onPress={toggleRoleDropdown}
         activeOpacity={0.7}
       >
-        <Text style={ selectedMode ? styles.selectedText : styles.placeholderText }>
+        <Text style={selectedMode ? styles.selectedText : styles.placeholderText}>
           {selectedMode 
             ? selectedMode === "passenger" 
               ? "👤 Passenger" 
@@ -253,7 +263,6 @@ export default function SignUpScreen({ navigation }) {
 
       {roleDropdownVisible && (
         <View style={styles.roleContainer}>
-          {/* Driver on top */}
           <TouchableOpacity
             style={[
               styles.roleButton,
@@ -264,7 +273,6 @@ export default function SignUpScreen({ navigation }) {
             <Text style={styles.roleText}>🚗 Driver</Text>
           </TouchableOpacity>
 
-          {/* Passenger below */}
           <TouchableOpacity
             style={[
               styles.roleButton,
@@ -277,8 +285,14 @@ export default function SignUpScreen({ navigation }) {
         </View>
       )}
 
-      <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Sign Up</Text>
+      <TouchableOpacity 
+        style={[styles.button, isLoading && styles.disabledButton]} 
+        onPress={handleSignUp}
+        disabled={isLoading}
+      >
+        <Text style={styles.buttonText}>
+          {isLoading ? "Creating Account..." : "Sign Up"}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -305,6 +319,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: "center",
     fontWeight: "600",
+    color: "#333",
   },
   input: {
     flexDirection: "row",
@@ -329,7 +344,6 @@ const styles = StyleSheet.create({
   dropdownIcon: {
     marginLeft: 8,
   },
-  // Updated password container to align TextInput and eye icon in a row
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -341,13 +355,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: "#fff",
   },
-  // The TextInput takes up remaining space
   passwordInput: {
     flex: 1,
     color: "#000",
     height: "100%",
   },
-  // A simple left margin so the icon stays to the right of the TextInput
   eyeButton: {
     marginLeft: 8,
     padding: 4,
@@ -370,6 +382,7 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontWeight: "bold",
+    color: "#333",
   },
   button: {
     height: 50,
@@ -378,6 +391,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
+  },
+  disabledButton: {
+    backgroundColor: "#99c2ff",
   },
   buttonText: {
     color: "#fff",
@@ -443,6 +459,7 @@ const styles = StyleSheet.create({
   },
   countryItemText: {
     fontSize: 16,
+    color: "#333",
   },
   searchInput: {
     height: 40,

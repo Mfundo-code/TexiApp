@@ -15,6 +15,7 @@ import ParcelListScreen from "../screens/ParcelListScreen";
 import RideDetailsScreen from "../screens/RideDetailsScreen";
 import BookForLaterScreen from "../screens/BookForLaterScreen";
 import MessageScreen from "../screens/MessageScreen";
+import EmailConfirmationScreen from "../screens/EmailConfirmationScreen";
 
 const AppStack = createStackNavigator();
 const AuthStack = createStackNavigator();
@@ -38,7 +39,8 @@ const AppNavigator = () => (
 const AuthNavigator = () => (
   <AuthStack.Navigator screenOptions={{ headerShown: false }}>
     <AuthStack.Screen name="SignIn" component={SignInScreen} />
-    <AuthStack.Screen name="SignUp" component={SignUpScreen} />
+    <AuthStack.Screen name="SignUp" component={SignUpScreen} />  
+    <AuthStack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
   </AuthStack.Navigator>
 );
 

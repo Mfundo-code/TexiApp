@@ -1,33 +1,24 @@
 from pathlib import Path
 
-# Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY
 SECRET_KEY = 'django-insecure-4mn8h=4o_uwlc6w(j0e4@9l$d35qd*0^yyw7@#xe0kq*boo!o9'
-DEBUG = True
-ALLOWED_HOSTS = ['*']  # During development; restrict in production
+DEBUG = False
+ALLOWED_HOSTS = ['*']
 
-# Applications
 INSTALLED_APPS = [
-    # Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Third-party
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
-
-    # Local
     'TexiApp',
 ]
 
-# Middleware (CORS first)
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -41,7 +32,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'TexiBackend.urls'
 
-# Templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -60,15 +50,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'TexiBackend.wsgi.application'
 
-# Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'texiapp_db',
+        'USER': 'texiapp_user',
+        'PASSWORD': 'Mfundo@1995',
+        'HOST': 'localhost',
+        'PORT': '5432',
+        'OPTIONS': {
+            'options': '-c search_path=public'
+        }
     }
 }
 
-# Authentication
 AUTH_USER_MODEL = 'TexiApp.CustomUser'
 
 REST_FRAMEWORK = {
@@ -80,22 +75,17 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Custom token creation
 REST_AUTH_TOKEN_MODEL = None
-REST_AUTH_TOKEN_CREATOR = 'TexiApp.utils.create_token'
-TOKEN_EXPIRED_AFTER_SECONDS = 86400  # 24 hours
+TOKEN_EXPIRED_AFTER_SECONDS = 86400
 
-# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
 STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
@@ -124,3 +114,15 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'mfundoknox@gmail.com'
+EMAIL_HOST_PASSWORD = 'wqsdayocqqyofrns'
+DEFAULT_FROM_EMAIL = 'findtaxi2025@gmail.com'
+
+# Use console email backend during development
+#if DEBUG:
+    #EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
