@@ -122,7 +122,3 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'mfundoknox@gmail.com'
 EMAIL_HOST_PASSWORD = 'wqsdayocqqyofrns'
 DEFAULT_FROM_EMAIL = 'findtaxi2025@gmail.com'
-
-# Use console email backend during development
-#if DEBUG:
-    #EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
