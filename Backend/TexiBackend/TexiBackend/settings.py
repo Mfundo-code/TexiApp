@@ -63,8 +63,8 @@ DATABASES = {
         'NAME': 'Mfundoknox$texiapp_db',
         'USER': 'Mfundoknox$texiapp_user',
         'PASSWORD': 'Mfundo@1995',
-        'HOST': 'Mfundoknox.postgres.pythonanywhere-services.com',
-        'PORT': '10000',
+        'HOST': 'Mfundoknox-4625.postgres.pythonanywhere-services.com',  # Notice the numbers
+        'PORT': '14625',  # Your specific port
     }
 }
 
