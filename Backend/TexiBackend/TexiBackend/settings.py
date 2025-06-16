@@ -1,10 +1,11 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-4mn8h=4o_uwlc6w(j0e4@9l$d35qd*0^yyw7@#xe0kq*boo!o9'
 DEBUG = False
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['yourusername.pythonanywhere.com']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -56,8 +57,8 @@ DATABASES = {
         'NAME': 'texiapp_db',
         'USER': 'texiapp_user',
         'PASSWORD': 'Mfundo@1995',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'HOST': 'username-1234.postgres.pythonanywhere-services.com',
+        'PORT': '10000',
         'OPTIONS': {
             'options': '-c search_path=public'
         }
@@ -84,6 +85,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = False
