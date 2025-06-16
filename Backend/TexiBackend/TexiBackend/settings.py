@@ -8,9 +8,13 @@ SECRET_KEY = 'django-insecure-4mn8h=4o_uwlc6w(j0e4@9l$d35qd*0^yyw7@#xe0kq*boo!o9
 DEBUG = False  # Must be False in production
 
 ALLOWED_HOSTS = [
-    'Mfundoknox.pythonanywhere.com',  # Your PythonAnywhere domain
+    'Mfundoknox.pythonanywhere.com',  
     '127.0.0.1',
+    'findtexi.com', 
+    'www.findtexi.com', 
+    'webapp-2640952.pythonanywhere.com'    
 ]
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
