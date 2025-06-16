@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-4mn8h=4o_uwlc6w(j0e4@9l$d35qd*0^yyw7@#xe0kq*boo!o9'
 DEBUG = False
-ALLOWED_HOSTS = ['yourusername.pythonanywhere.com']
+ALLOWED_HOSTS = ['Mfundoknox.pythonanywhere.com']  # Use your actual username
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -54,14 +54,11 @@ WSGI_APPLICATION = 'TexiBackend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'texiapp_db',
-        'USER': 'texiapp_user',
+        'NAME': 'Mfundoknox$texiapp_db',  # Add username prefix
+        'USER': 'Mfundoknox$texiapp_user',  # Add username prefix
         'PASSWORD': 'Mfundo@1995',
-        'HOST': 'username-1234.postgres.pythonanywhere-services.com',
+        'HOST': 'Mfundoknox.postgres.pythonanywhere-services.com',  # Use your actual username
         'PORT': '10000',
-        'OPTIONS': {
-            'options': '-c search_path=public'
-        }
     }
 }
 
