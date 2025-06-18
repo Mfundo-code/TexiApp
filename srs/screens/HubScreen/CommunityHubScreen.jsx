@@ -14,7 +14,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from '../../../App';
-import { API_URL } from '../../src/config'; // ← import API_URL
+import { API_URL } from "../../config"; // Import from config file
 
 const CommunityHubScreen = ({ navigation }) => {
   const { authToken } = useContext(AuthContext);

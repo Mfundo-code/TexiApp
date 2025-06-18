@@ -12,12 +12,25 @@ class CustomUserManager(BaseUserManager):
         if not email:
             raise ValueError("Email is required")
         email = self.normalize_email(email)
+        
+        # Check for existing email or phone
+        if CustomUser.objects.filter(email=email).exists():
+            raise ValueError("Email already exists")
+        if CustomUser.objects.filter(phone=phone).exists():
+            raise ValueError("Phone number already exists")
+            
         user = self.model(username=username, email=email, phone=phone)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
     def create_superuser(self, username, email, phone, password):
+        # Check for existing email or phone
+        if CustomUser.objects.filter(email=email).exists():
+            raise ValueError("Email already exists")
+        if CustomUser.objects.filter(phone=phone).exists():
+            raise ValueError("Phone number already exists")
+            
         user = self.create_user(username, email, phone, password)
         user.is_staff = True
         user.is_superuser = True
@@ -29,13 +42,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('driver', 'Driver'),
         ('passenger', 'Passenger'),
     ]
-    username = models.CharField(max_length=100, unique=True)
+    username = models.CharField(max_length=100)  # Removed unique=True
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, unique=True)  # Increased from 15 to 20
+    phone = models.CharField(max_length=20, unique=True)
     mode = models.CharField(
-        max_length=10, 
-        choices=MODE_CHOICES, 
-        blank=True, 
+        max_length=10,
+        choices=MODE_CHOICES,
+        blank=True,
         null=True
     )
     is_active = models.BooleanField(default=True)
@@ -59,8 +72,8 @@ class Ride(models.Model):
         ('parcel', 'Parcel Delivery'),
     ]
     user = models.ForeignKey(
-        CustomUser, 
-        on_delete=models.SET_NULL,  
+        CustomUser,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
@@ -75,10 +88,10 @@ class Ride(models.Model):
     dropoff_lng = models.FloatField()
     _is_active = models.BooleanField(default=True, db_column='is_active')
     matched_ride = models.ForeignKey(
-        'self', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='matches'
     )
     expires_at = models.DateTimeField(default=timezone.now)
@@ -216,13 +229,13 @@ class Ride(models.Model):
 
 class Message(models.Model):
     sender = models.ForeignKey(
-        CustomUser, 
-        on_delete=models.CASCADE, 
+        CustomUser,
+        on_delete=models.CASCADE,
         related_name='sent_messages'
     )
     recipient = models.ForeignKey(
-        CustomUser, 
-        on_delete=models.CASCADE, 
+        CustomUser,
+        on_delete=models.CASCADE,
         related_name='received_messages'
     )
     content = models.TextField()
@@ -242,8 +255,8 @@ class Post(models.Model):
 
 class Comment(models.Model):
     post = models.ForeignKey(
-        Post, 
-        on_delete=models.CASCADE, 
+        Post,
+        on_delete=models.CASCADE,
         related_name='comments'
     )
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)

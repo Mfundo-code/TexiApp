@@ -13,7 +13,7 @@ import RideComponents from "../../Components/RideComponents";
 import axios from "axios";
 import { AuthContext } from "../../../App";
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { API_URL } from '../../src/config'; // ← import API_URL
+import { API_URL } from "../../config";
 
 const RideConfirmation = ({ route, navigation }) => {
   const { authToken } = useContext(AuthContext);

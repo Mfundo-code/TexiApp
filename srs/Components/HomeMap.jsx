@@ -167,7 +167,7 @@ const HomeMap = ({
   // Fixed unread count fetching
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await axios.get('http://192.168.0.137:8000/api/messages/unread-count/', {
+      const response = await axios.get('https://www.findtexi.com/api/messages/unread-count/', {
         headers: { Authorization: `Token ${authToken}` }
       });
       setUnreadCount(response.data.unread_count || 0);  // Ensure 0 if null

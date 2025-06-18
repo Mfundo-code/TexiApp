@@ -16,6 +16,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['username', 'email', 'phone', 'password', 'mode']
     
+    def validate(self, data):
+        # Check if email already exists
+        if CustomUser.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError("Email already exists")
+        
+        # Check if phone already exists
+        if CustomUser.objects.filter(phone=data['phone']).exists():
+            raise serializers.ValidationError("Phone number already exists")
+        
+        return data
+    
     def create(self, validated_data):
         mode = validated_data.pop('mode', 'passenger')
         user = CustomUser.objects.create_user(**validated_data)

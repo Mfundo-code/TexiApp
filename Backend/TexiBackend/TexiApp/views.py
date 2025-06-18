@@ -23,16 +23,33 @@ from .serializers import (
     CreateCommentSerializer,
 )
 
+
 # User Registration (with email confirmation)
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
         email = request.data.get('email')
+        phone = request.data.get('phone')
         
-        # Check if unverified user already exists
+        # Check if email or phone already exists (verified users)
+        if CustomUser.objects.filter(email=email, is_email_verified=True).exists():
+            return Response(
+                {"error": "Email already registered"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if CustomUser.objects.filter(phone=phone, is_email_verified=True).exists():
+            return Response(
+                {"error": "Phone number already registered"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if unverified user already exists (by email OR phone)
         try:
-            existing_user = CustomUser.objects.get(email=email, is_email_verified=False)
+            existing_user = CustomUser.objects.get(
+                Q(email=email) | Q(phone=phone),
+                is_email_verified=False
+            )
             # Resend code to existing unverified user
             return self.resend_code(existing_user)
         except CustomUser.DoesNotExist:
@@ -92,6 +109,7 @@ class RegisterView(APIView):
             status=status.HTTP_200_OK
         )
 
+
 # Email Confirmation Endpoint
 class ConfirmEmailView(APIView):
     permission_classes = [AllowAny]
@@ -130,6 +148,7 @@ class ConfirmEmailView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+
 # Authentication Endpoints
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -149,6 +168,7 @@ def login_view(request):
         })
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
@@ -156,6 +176,7 @@ def logout_view(request):
         request.auth.delete()
     logout(request)
     return Response({'message': 'Logged out successfully'})
+
 
 # Rides
 class RideListCreateView(generics.ListCreateAPIView):
@@ -179,6 +200,7 @@ class RideListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+
 class RideDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Ride.objects.all()
     serializer_class = RideSerializer
@@ -193,6 +215,7 @@ class RideDetailView(generics.RetrieveUpdateDestroyAPIView):
         if instance.user != self.request.user:
             raise PermissionDenied("You can only delete your own rides")
         instance.delete()
+
 
 class RideMatchesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -237,6 +260,7 @@ class RideMatchesView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+
 # Messaging
 class MessageListView(generics.ListAPIView):
     serializer_class = MessageSerializer
@@ -247,12 +271,14 @@ class MessageListView(generics.ListAPIView):
             Q(sender=self.request.user) | Q(recipient=self.request.user)
         ).order_by('timestamp')
 
+
 class MessageDetailView(generics.ListCreateAPIView):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         partner = get_object_or_404(CustomUser, id=self.kwargs['user_id'])
+        # Mark unread as read
         Message.objects.filter(
             sender=partner,
             recipient=self.request.user,
@@ -266,6 +292,7 @@ class MessageDetailView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         partner = get_object_or_404(CustomUser, id=self.kwargs['user_id'])
         serializer.save(sender=self.request.user, recipient=partner)
+
 
 class ChatListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -307,6 +334,7 @@ class ChatListView(APIView):
         )
         return Response(conversations)
 
+
 # Community Hub
 class CommunityHubView(APIView):
     permission_classes = [IsAuthenticated]
@@ -321,6 +349,7 @@ class CommunityHubView(APIView):
             serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class PostCommentsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -337,6 +366,7 @@ class PostCommentsView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class RideHistoryView(generics.ListAPIView):
     serializer_class = RideSerializer
     permission_classes = [IsAuthenticated]
@@ -344,11 +374,13 @@ class RideHistoryView(generics.ListAPIView):
     def get_queryset(self):
         return Ride.objects.filter(user=self.request.user).order_by('-departure_time')
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def unread_message_count(request):
     count = Message.objects.filter(recipient=request.user, is_read=False).count()
     return Response({'unread_count': count or 0})
+
 
 # Resend verification code
 class ResendCodeView(APIView):
@@ -381,6 +413,7 @@ class ResendCodeView(APIView):
         )
         
         return Response({'message': 'New verification code sent'})
+
 
 # Password reset endpoint
 class PasswordResetView(APIView):

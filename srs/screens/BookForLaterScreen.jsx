@@ -14,7 +14,7 @@ import axios from 'axios';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AuthContext } from '../../App';
 import dayjs from 'dayjs'; // Import dayjs
-import { API_URL } from '../../src/config'; // ← import API_URL
+import { API_URL } from "../../config";
 
 const BookForLaterScreen = () => {
   const navigation = useNavigation();

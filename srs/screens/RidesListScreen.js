@@ -11,7 +11,7 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from '../../App';
 import axios from 'axios';
-import { API_URL } from '../../src/config'; // ← import API_URL from config
+import { API_URL } from "../../config";
 
 const RidesListScreen = ({ navigation }) => {
   const [rides, setRides] = useState([]);

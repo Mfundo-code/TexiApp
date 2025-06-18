@@ -16,7 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from "../../App";
-import { API_URL } from '../../src/config'; // ← import API_URL
+import { API_URL } from "../../config";
 
 const MessageScreen = ({ navigation, route }) => {
     const { recipient } = route.params;
