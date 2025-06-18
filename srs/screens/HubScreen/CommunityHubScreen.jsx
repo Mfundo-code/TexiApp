@@ -1,5 +1,3 @@
-// CommunityHubScreen.js
-
 import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
@@ -16,6 +14,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from '../../../App';
+import { API_URL } from '../../src/config'; // ← import API_URL
 
 const CommunityHubScreen = ({ navigation }) => {
   const { authToken } = useContext(AuthContext);
@@ -27,7 +26,7 @@ const CommunityHubScreen = ({ navigation }) => {
   const fetchPosts = async () => {
     try {
       const { data } = await axios.get(
-        'http://192.168.0.137:8000/api/community/posts/',
+        `${API_URL}/community/posts/`,    // ← use API_URL
         { headers: { Authorization: `Token ${authToken}` } }
       );
       setPosts(data);
@@ -47,7 +46,7 @@ const CommunityHubScreen = ({ navigation }) => {
 
     try {
       await axios.post(
-        'http://192.168.0.137:8000/api/community/posts/',
+        `${API_URL}/community/posts/`,    // ← use API_URL
         { content: newPost },
         { headers: { Authorization: `Token ${authToken}` } }
       );

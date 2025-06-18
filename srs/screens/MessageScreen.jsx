@@ -1,10 +1,10 @@
-// MessageScreen.js (new file)
+// MessageScreen.js
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   View, 
   Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+  TouchableOpacity,
+  StyleSheet,
   TextInput, 
   KeyboardAvoidingView,
   Platform,
@@ -16,6 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from "../../App";
+import { API_URL } from '../../src/config'; // ← import API_URL
 
 const MessageScreen = ({ navigation, route }) => {
     const { recipient } = route.params;
@@ -28,7 +29,7 @@ const MessageScreen = ({ navigation, route }) => {
     const loadMessages = async () => {
         try {
             const { data } = await axios.get(
-                `http://192.168.0.137:8000/api/messages/${recipient.id}/`,
+                `${API_URL}/messages/${recipient.id}/`,     // ← use API_URL
                 { headers: { Authorization: `Token ${authToken}` } }
             );
             setMessages(data);
@@ -50,7 +51,7 @@ const MessageScreen = ({ navigation, route }) => {
 
         try {
             await axios.post(
-                `http://192.168.0.137:8000/api/messages/${recipient.id}/`,
+                `${API_URL}/messages/${recipient.id}/`,     // ← use API_URL
                 { content: newMessage },
                 { headers: { Authorization: `Token ${authToken}` } }
             );

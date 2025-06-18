@@ -1,5 +1,3 @@
-// StatusComponent.js
-
 import React, { useState, useEffect, useContext } from 'react';
 import { 
   SafeAreaView, 
@@ -7,11 +5,12 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from '../../App';
+import { API_URL } from '../config'; // ← import API_URL
 
 const StatusComponent = ({ 
   onMorePress = () => {},
@@ -28,11 +27,9 @@ const StatusComponent = ({
     const fetchActiveRides = async () => {
       try {
         const response = await axios.get(
-          'http://192.168.0.137:8000/api/rides/history/',
+          `${API_URL}/rides/history/`,      // ← use API_URL
           {
-            headers: {
-              'Authorization': `Token ${authToken}`
-            }
+            headers: { Authorization: `Token ${authToken}` }
           }
         );
         

@@ -115,7 +115,8 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    # Add your production frontend URL when ready
+    "https://www.findtexi.com",  # Add this
+    "https://findtexi.com",
 ]
 
 # Email Configuration (Using PythonAnywhere's SMTP)
@@ -132,3 +133,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True  # Force HTTPS
+CSRF_TRUSTED_ORIGINS = [
+    "https://www.findtexi.com",
+    "https://findtexi.com",
+]

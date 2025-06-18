@@ -10,8 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
-
-const API_URL = "http://192.168.0.137:8000/api";
+import { API_URL } from "../../src/config"; // ← import API_URL
 
 const EmailConfirmationScreen = () => {
   const navigation = useNavigation();

@@ -11,8 +11,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../../App";
-
-const API_URL = "http://192.168.0.137:8000/api";
+import { API_URL } from "../../config"; // Import from config file
 
 export default function SignInScreen({ navigation }) {
   const { 
@@ -28,7 +27,7 @@ export default function SignInScreen({ navigation }) {
 
   const handleSignIn = async () => {
     try {
-      const res = await fetch(`${API_URL}/login/`, {
+      const res = await fetch(`${API_URL}/login/`, { // Using API_URL from config
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -139,7 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: "#fff",
   },
-  // The TextInput inside shares the container’s height and takes up all available space
+  // The TextInput inside shares the container's height and takes up all available space
   passwordInput: {
     flex: 1,
     color: "#000",

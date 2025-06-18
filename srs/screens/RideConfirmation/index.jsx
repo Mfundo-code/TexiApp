@@ -5,13 +5,15 @@ import {
   ActivityIndicator, 
   Text, 
   Linking,
-  TouchableOpacity 
+  TouchableOpacity,
+  Alert
 } from "react-native";
 import HomeMap from "../../Components/HomeMap";
 import RideComponents from "../../Components/RideComponents";
 import axios from "axios";
 import { AuthContext } from "../../../App";
 import Icon from 'react-native-vector-icons/FontAwesome';
+import { API_URL } from '../../src/config'; // ← import API_URL
 
 const RideConfirmation = ({ route, navigation }) => {
   const { authToken } = useContext(AuthContext);
@@ -58,7 +60,7 @@ const RideConfirmation = ({ route, navigation }) => {
   const deleteRide = async (rideId) => {
     try {
       await axios.delete(
-        `http://192.168.0.137:8000/api/rides/${rideId}/`,
+        `${API_URL}/rides/${rideId}/`,          // ← use API_URL
         { headers: { Authorization: `Token ${authToken}` } }
       );
       return true;
@@ -73,12 +75,11 @@ const RideConfirmation = ({ route, navigation }) => {
 
     try {
       const { data } = await axios.get(
-        `http://192.168.0.137:8000/api/rides/${rideId}/matches/`,
+        `${API_URL}/rides/${rideId}/matches/`,   // ← use API_URL
         { headers: { Authorization: `Token ${authToken}` } }
       );
 
       if (data.match) {
-        // Stop polling immediately
         clearInterval(intervalRef.current);
         intervalRef.current = null;
 
@@ -100,13 +101,10 @@ const RideConfirmation = ({ route, navigation }) => {
         setIsLoading(false);
 
       } else if (pollingCountRef.current >= MAX_POLL_ATTEMPTS) {
-        // No match found within max attempts → ride is auto-saved
         clearInterval(intervalRef.current);
         intervalRef.current = null;
         setRideSaved(true);
         setIsLoading(false);
-
-        // No more Alert here, because the UI already shows saved state
       }
     } catch (pollError) {
       console.error("Error checking matches:", pollError);
@@ -118,7 +116,6 @@ const RideConfirmation = ({ route, navigation }) => {
 
   const createAndStartPolling = async () => {
     try {
-      // If somehow an existing interval exists, clear it
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -128,7 +125,7 @@ const RideConfirmation = ({ route, navigation }) => {
       pollingCountRef.current = 0;
 
       const createResponse = await axios.post(
-        "http://192.168.0.137:8000/api/rides/",
+        `${API_URL}/rides/`,                     // ← use API_URL
         {
           ride_type: rideType,
           pickup_name: pickup.address,
@@ -149,7 +146,6 @@ const RideConfirmation = ({ route, navigation }) => {
       const rideId = createResponse.data.id;
       currentRideIdRef.current = rideId;
 
-      // Poll every 5 seconds
       intervalRef.current = setInterval(() => checkForMatch(rideId), 5000);
     } catch (error) {
       console.error("Ride creation error:", error);
@@ -178,15 +174,12 @@ const RideConfirmation = ({ route, navigation }) => {
   };
 
   const handleDone = () => {
-    // Simply navigate home—no further accept/confirm step
     navigation.navigate("Home");
   };
 
   useEffect(() => {
     createAndStartPolling();
-
     return () => {
-      // On unmount, just clear polling interval; do NOT delete the ride
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -208,7 +201,6 @@ const RideConfirmation = ({ route, navigation }) => {
   }
 
   if (rideSaved) {
-    // Ride was auto-saved after polling attempts
     return (
       <View style={styles.savedContainer}>
         <Icon name="check-circle" size={60} color="#4CAF50" />
@@ -218,7 +210,6 @@ const RideConfirmation = ({ route, navigation }) => {
             ? "A driver will contact you when available."
             : "A passenger will contact you when available."}
         </Text>
-
         <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
           <Icon name="check" size={24} color="#fff" />
           <Text style={styles.doneButtonText}>Done</Text>
@@ -227,7 +218,6 @@ const RideConfirmation = ({ route, navigation }) => {
     );
   }
 
-  // At this point, matchingRide is non-null (a match was found)
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>

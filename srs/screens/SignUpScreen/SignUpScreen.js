@@ -11,8 +11,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as RNLocalize from "react-native-localize";
-
-const API_URL = "http://192.168.0.137:8000/api";
+import { API_URL } from "../../config";
 
 const COUNTRIES = [
   { name: "South Africa", code: "ZA", dial_code: "+27", flag: "🇿🇦" },
