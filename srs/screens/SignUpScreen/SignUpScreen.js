@@ -52,7 +52,7 @@ export default function SignUpScreen({ navigation }) {
 
   const validateForm = () => {
     if (!username.trim()) return "Username is required";
-    if (!/^\S+@\S+\.\S+$/.test(email)) return "Invalid email address";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Invalid email address";
     if (!selectedCountry || !phone) return "Phone number is required";
     if (password.length < 8) return "Password must be at least 8 characters";
     if (!selectedMode) return "Please select your role";
@@ -84,7 +84,7 @@ export default function SignUpScreen({ navigation }) {
 
       const json = await res.json();
       if (res.ok) {
-        navigation.navigate("EmailConfirmation", { 
+        navigation.navigate("EmailConfirmation", {
           email,
           username,
           mode: selectedMode,
@@ -96,7 +96,7 @@ export default function SignUpScreen({ navigation }) {
         if (json.phone) errorMessage = json.phone[0];
         if (json.username) errorMessage = json.username[0];
         if (json.password) errorMessage = json.password[0];
-        
+
         Alert.alert("Registration Error", errorMessage);
       }
     } catch (error) {
