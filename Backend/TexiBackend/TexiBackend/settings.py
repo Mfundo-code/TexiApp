@@ -117,6 +117,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://www.findtexi.com",  # Add this
     "https://findtexi.com",
+    
 
 ]
 
@@ -129,12 +130,3 @@ EMAIL_HOST_USER = 'mfundoknox@gmail.com'
 EMAIL_HOST_PASSWORD = 'wqsdayocqqyofrns'  # Your app password
 DEFAULT_FROM_EMAIL = 'findtaxi2025@gmail.com'
 
-# Security Settings
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True  # Force HTTPS
-CSRF_TRUSTED_ORIGINS = [
-    "https://www.findtexi.com",
-    "https://findtexi.com",
-]

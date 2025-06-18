@@ -13,6 +13,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import * as RNLocalize from "react-native-localize";
 import { API_URL } from "../../config";
 
+
 const COUNTRIES = [
   { name: "South Africa", code: "ZA", dial_code: "+27", flag: "🇿🇦" },
   { name: "Zambia", code: "ZM", dial_code: "+260", flag: "🇿🇲" },
