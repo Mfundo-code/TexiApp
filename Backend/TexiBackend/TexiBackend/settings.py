@@ -117,16 +117,17 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://www.findtexi.com",  # Add this
     "https://findtexi.com",
+
 ]
 
-# Email Configuration (Using PythonAnywhere's SMTP)
+# Email Configuration 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.pythonanywhere.com'
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'Mfundoknox'  # Your PythonAnywhere username
-EMAIL_HOST_PASSWORD = 'your-email-password'  # Set in PythonAnywhere Email tab
-DEFAULT_FROM_EMAIL = 'Mfundoknox@pythonanywhere.com'
+EMAIL_HOST_USER = 'mfundoknox@gmail.com'
+EMAIL_HOST_PASSWORD = 'wqsdayocqqyofrns'  # Your app password
+DEFAULT_FROM_EMAIL = 'findtaxi2025@gmail.com'
 
 # Security Settings
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
