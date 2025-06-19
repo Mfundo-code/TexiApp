@@ -222,7 +222,7 @@ const HomeMap = ({
                     style={styles.marqueeText}
                     onLayout={e => setTextWidth(e.nativeEvent.layout.width)}
                   >
-                    CodiTexi is a reliable and secure platform. Your safety is our top priority
+                    FindTexi is a reliable and secure platform. Your safety is our top priority
                   </Text>
                 </Animated.View>
               </View>

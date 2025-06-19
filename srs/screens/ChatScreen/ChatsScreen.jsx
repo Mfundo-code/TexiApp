@@ -9,13 +9,12 @@ import {
   StyleSheet, 
   FlatList, 
   ActivityIndicator,
-  Linking,
+  Linking
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from '../../../App';
-import { API_URL } from "../../config"; // Import from config file
 
 const ChatsScreen = ({ navigation }) => {
     const { authToken } = useContext(AuthContext);
@@ -24,10 +23,9 @@ const ChatsScreen = ({ navigation }) => {
 
     const fetchChats = async () => {
         try {
-            const { data } = await axios.get(
-              `${API_URL}/chats/`,       // ← use API_URL
-              { headers: { Authorization: `Token ${authToken}` } }
-            );
+            const { data } = await axios.get('https://www.findtexi.com/api/chats/', {
+                headers: { Authorization: `Token ${authToken}` }
+            });
             setChats(data);
         } catch (error) {
             console.error("Error loading chats:", error);
@@ -227,7 +225,7 @@ const styles = StyleSheet.create({
         marginVertical: 15,
         textAlign: 'center',
     },
-    // Unread badge and bold username
+    // New styles for unread badge and bold username
     unreadBadge: {
         position: 'absolute',
         top: 0,

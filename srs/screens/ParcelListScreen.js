@@ -2,23 +2,22 @@ import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
+  StyleSheet,
   FlatList,
   SafeAreaView,
   ActivityIndicator,
-  StyleSheet,
   TouchableOpacity
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from '../../App';
 import axios from 'axios';
-import { API_URL } from "../../config";
 
 const ParcelListScreen = ({ navigation }) => {
   const { authToken } = useContext(AuthContext);
   const [parcels, setParcels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [expandedIds, setExpandedIds] = useState([]);
+  const [expandedIds, setExpandedIds] = useState([]); // Track which parcels are expanded
 
   // Generate unique parcel code
   const generateParcelCode = (id, timestamp) => {
@@ -35,12 +34,15 @@ const ParcelListScreen = ({ navigation }) => {
     const fetchParcels = async () => {
       try {
         const response = await axios.get(
-          `${API_URL}/rides/history/`,
+          'https://www.findtexi.com/api/rides/history/',
           {
-            headers: { Authorization: `Token ${authToken}` }
+            headers: {
+              Authorization: `Token ${authToken}`
+            }
           }
         );
 
+        // Filter and map parcel data
         const parcelData = response.data
           .filter(
             ride =>
@@ -51,14 +53,17 @@ const ParcelListScreen = ({ navigation }) => {
           .map(ride => {
             const isSentParcel = ride.ride_type === 'parcel';
             const parcelCode = generateParcelCode(ride.id, ride.created_at);
+
+            // Keep a single icon ("package-variant") for all statuses, regardless of open/closed
             const iconName = 'package-variant';
+            // Color logic remains the same
             const color = ride.is_active
               ? ride.matched_ride
-                ? '#ff9800'
-                : '#2196f3'
+                ? '#ff9800' // In Transit
+                : '#2196f3' // Pending
               : ride.matched_ride
-              ? '#4caf50'
-              : '#f44336';
+              ? '#4caf50' // Delivered
+              : '#f44336'; // Closed
 
             return {
               id: ride.id,
@@ -114,9 +119,13 @@ const ParcelListScreen = ({ navigation }) => {
 
   // Toggle expanded/collapsed state for a given parcel ID
   const toggleExpand = id => {
-    setExpandedIds(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+    setExpandedIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
   };
 
   // Render parcel item
@@ -129,6 +138,7 @@ const ParcelListScreen = ({ navigation }) => {
         activeOpacity={0.7}
       >
         <View style={styles.parcelCard}>
+          {/* HEADER: icon, code/date, and on the right side: status above time */}
           <View style={styles.parcelHeader}>
             <View
               style={[
@@ -148,6 +158,7 @@ const ParcelListScreen = ({ navigation }) => {
               <Text style={styles.parcelDate}>{formatDate(item.created_at)}</Text>
             </View>
 
+            {/* STATUS above TIME, stacked vertically */}
             <View style={styles.statusTimeContainer}>
               <Text style={[styles.parcelStatus, { color: item.color }]}>
                 {item.status}
@@ -165,6 +176,7 @@ const ParcelListScreen = ({ navigation }) => {
             </View>
           </View>
 
+          {/* If expanded, show pickup & dropoff */}
           {isExpanded && (
             <>
               <View style={styles.divider} />
@@ -197,7 +209,7 @@ const ParcelListScreen = ({ navigation }) => {
     );
   };
 
-  // Loading state
+  // Render loading state
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -207,7 +219,7 @@ const ParcelListScreen = ({ navigation }) => {
     );
   }
 
-  // Error state
+  // Render error state
   if (error) {
     return (
       <SafeAreaView style={styles.errorContainer}>
@@ -230,7 +242,7 @@ const ParcelListScreen = ({ navigation }) => {
     );
   }
 
-  // Empty state
+  // Render empty state
   if (parcels.length === 0) {
     return (
       <SafeAreaView style={styles.emptyContainer}>

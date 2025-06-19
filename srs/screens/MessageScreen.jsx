@@ -1,10 +1,10 @@
-// MessageScreen.js
+// MessageScreen.js (new file)
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   View, 
   Text, 
-  TouchableOpacity,
-  StyleSheet,
+  StyleSheet, 
+  TouchableOpacity, 
   TextInput, 
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +16,6 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from "../../App";
-import { API_URL } from "../../config";
 
 const MessageScreen = ({ navigation, route }) => {
     const { recipient } = route.params;
@@ -29,7 +28,7 @@ const MessageScreen = ({ navigation, route }) => {
     const loadMessages = async () => {
         try {
             const { data } = await axios.get(
-                `${API_URL}/messages/${recipient.id}/`,     // ← use API_URL
+                `https://www.findtexi.com/api/messages/${recipient.id}/`,
                 { headers: { Authorization: `Token ${authToken}` } }
             );
             setMessages(data);
@@ -51,7 +50,7 @@ const MessageScreen = ({ navigation, route }) => {
 
         try {
             await axios.post(
-                `${API_URL}/messages/${recipient.id}/`,     // ← use API_URL
+                `https://www.findtexi.com/api/messages/${recipient.id}/`,
                 { content: newMessage },
                 { headers: { Authorization: `Token ${authToken}` } }
             );

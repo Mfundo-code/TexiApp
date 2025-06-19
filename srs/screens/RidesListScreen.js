@@ -11,22 +11,26 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from '../../App';
 import axios from 'axios';
-import { API_URL } from "../../config";
 
 const RidesListScreen = ({ navigation }) => {
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Keep track of which ride IDs are currently "expanded"
   const [expandedRides, setExpandedRides] = useState({});
+
   const { authToken } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchRides = async () => {
       try {
         const response = await axios.get(
-          `${API_URL}/rides/history/`,          // ← use API_URL here
+          'https://www.findtexi.com/api/rides/history/',
           {
-            headers: { Authorization: `Token ${authToken}` },
+            headers: {
+              Authorization: `Token ${authToken}`,
+            },
           }
         );
         setRides(response.data);
@@ -41,6 +45,7 @@ const RidesListScreen = ({ navigation }) => {
     fetchRides();
   }, [authToken]);
 
+  // Toggle whether a given ride card is expanded or collapsed
   const toggleExpand = (rideId) => {
     setExpandedRides((prev) => ({
       ...prev,
@@ -78,7 +83,11 @@ const RidesListScreen = ({ navigation }) => {
   if (rides.length === 0) {
     return (
       <SafeAreaView style={styles.emptyContainer}>
-        <MaterialCommunityIcons name="car-off" size={60} color="#cccccc" />
+        <MaterialCommunityIcons
+          name="car-off"
+          size={60}
+          color="#cccccc"
+        />
         <Text style={styles.emptyText}>No rides yet</Text>
         <Text style={styles.emptySubText}>
           Your ride history will appear here
@@ -87,6 +96,7 @@ const RidesListScreen = ({ navigation }) => {
     );
   }
 
+  // Helpers for formatting timestamps
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -112,6 +122,7 @@ const RidesListScreen = ({ navigation }) => {
         onPress={() => toggleExpand(item.id)}
       >
         <View style={styles.rideCard}>
+          {/* Top row: icon, date, status */}
           <View style={styles.rideHeader}>
             <MaterialCommunityIcons
               name={item.ride_type === 'parcel' ? 'package-variant' : 'car'}
@@ -135,6 +146,7 @@ const RidesListScreen = ({ navigation }) => {
             </Text>
           </View>
 
+          {/* Always show departure time */}
           <View style={styles.rideDetailRow}>
             <MaterialCommunityIcons
               name="clock-time-four-outline"
@@ -144,8 +156,10 @@ const RidesListScreen = ({ navigation }) => {
             <Text style={styles.rideTime}>{formatTime(item.departure_time)}</Text>
           </View>
 
+          {/* Additional details only when expanded */}
           {isExpanded && (
             <>
+              {/* Pickup location */}
               <View style={styles.rideDetailRow}>
                 <MaterialCommunityIcons
                   name="map-marker-outline"
@@ -157,6 +171,7 @@ const RidesListScreen = ({ navigation }) => {
                 </Text>
               </View>
 
+              {/* Dropoff location */}
               <View style={styles.rideDetailRow}>
                 <MaterialCommunityIcons
                   name="flag-checkered"
@@ -168,6 +183,7 @@ const RidesListScreen = ({ navigation }) => {
                 </Text>
               </View>
 
+              {/* Footer: ride type and Details button if matched */}
               <View style={styles.rideFooter}>
                 <Text style={styles.rideType}>
                   {item.ride_type_display}

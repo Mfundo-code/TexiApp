@@ -1,3 +1,5 @@
+// CommunityHubScreen.js
+
 import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
@@ -14,7 +16,6 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { AuthContext } from '../../../App';
-import { API_URL } from "../../config"; // Import from config file
 
 const CommunityHubScreen = ({ navigation }) => {
   const { authToken } = useContext(AuthContext);
@@ -26,7 +27,7 @@ const CommunityHubScreen = ({ navigation }) => {
   const fetchPosts = async () => {
     try {
       const { data } = await axios.get(
-        `${API_URL}/community/posts/`,    // ← use API_URL
+        'https://www.findtexi.com/api/community/posts/',
         { headers: { Authorization: `Token ${authToken}` } }
       );
       setPosts(data);
@@ -46,7 +47,7 @@ const CommunityHubScreen = ({ navigation }) => {
 
     try {
       await axios.post(
-        `${API_URL}/community/posts/`,    // ← use API_URL
+        'https://www.findtexi.com/api/community/posts/',
         { content: newPost },
         { headers: { Authorization: `Token ${authToken}` } }
       );

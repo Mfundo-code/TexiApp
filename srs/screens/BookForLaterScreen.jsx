@@ -1,3 +1,4 @@
+// BookForLaterScreen.js
 import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
@@ -14,7 +15,6 @@ import axios from 'axios';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AuthContext } from '../../App';
 import dayjs from 'dayjs'; // Import dayjs
-import { API_URL } from "../../config";
 
 const BookForLaterScreen = () => {
   const navigation = useNavigation();
@@ -154,7 +154,7 @@ const BookForLaterScreen = () => {
       const isoTime = selectedTime.toISOString();
       
       await axios.post(
-        `${API_URL}/rides/`,                     // ← use API_URL
+        'https://www.findtexi.com/api/rides/',
         {
           ride_type: rideType,
           pickup_name: fromText,
@@ -187,7 +187,7 @@ const BookForLaterScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleClose}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color="#139beb" />
         </TouchableOpacity>
         <Text style={styles.title}>Book For Later</Text>
@@ -195,7 +195,6 @@ const BookForLaterScreen = () => {
       </View>
 
       <View style={styles.content}>
-        {/* From input + suggestions */}
         <View style={styles.inputContainer}>
           <Text>From:</Text>
           <TextInput
@@ -229,7 +228,6 @@ const BookForLaterScreen = () => {
           )}
         </View>
 
-        {/* Destination input + suggestions */}
         <View style={styles.inputContainer}>
           <Text>Destination:</Text>
           <TextInput
@@ -263,7 +261,6 @@ const BookForLaterScreen = () => {
           )}
         </View>
 
-        {/* Departure time input */}
         <View style={styles.inputContainer}>
           <Text>Departure Time (YYYY-MM-DD HH:mm):</Text>
           <TextInput
@@ -352,7 +349,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#5d5d5d',
-    
   },
   button: {
     backgroundColor: '#007AFF',

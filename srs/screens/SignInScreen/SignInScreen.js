@@ -7,11 +7,12 @@ import {
   Text,
   Alert,
   StyleSheet,
+  ActivityIndicator
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../../App";
-import { API_URL } from "../../config"; // Import from config file
+import { API_URL } from "../../config";
 
 export default function SignInScreen({ navigation }) {
   const { 
@@ -24,10 +25,15 @@ export default function SignInScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSignIn = async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    
     try {
-      const res = await fetch(`${API_URL}/login/`, { // Using API_URL from config
+      const res = await fetch(`${API_URL}/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -35,12 +41,10 @@ export default function SignInScreen({ navigation }) {
 
       const json = await res.json();
       if (res.ok) {
-        // Save token, username, and mode into AsyncStorage
         await AsyncStorage.setItem("userToken", json.token);
         await AsyncStorage.setItem("username", json.username);
         await AsyncStorage.setItem("mode", json.mode);
 
-        // Update context
         setAuthToken(json.token);
         setUsername(json.username);
         setMode(json.mode);
@@ -50,6 +54,8 @@ export default function SignInScreen({ navigation }) {
       }
     } catch (error) {
       Alert.alert("Error", error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -67,7 +73,6 @@ export default function SignInScreen({ navigation }) {
         onChangeText={setEmail}
       />
 
-      {/* Password input with eye toggle on a straight line */}
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.passwordInput}
@@ -90,8 +95,19 @@ export default function SignInScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-        <Text style={styles.buttonText}>Sign In</Text>
+      <TouchableOpacity
+        style={[styles.button, isLoading && styles.disabledButton]}
+        onPress={handleSignIn}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <View style={styles.buttonContent}>
+            <ActivityIndicator color="#fff" size="small" />
+            <Text style={styles.buttonText}>Signing In...</Text>
+          </View>
+        ) : (
+          <Text style={styles.buttonText}>Sign In</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -126,7 +142,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#000",
   },
-  // Updated password container to wrap both TextInput and icon with one border
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -138,13 +153,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: "#fff",
   },
-  // The TextInput inside shares the container's height and takes up all available space
   passwordInput: {
     flex: 1,
     color: "#000",
     height: "100%",
   },
-  // Simple left margin so the icon sits to the right of the TextInput
   eyeButton: {
     marginLeft: 8,
     padding: 4,
@@ -157,10 +170,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
+  disabledButton: {
+    backgroundColor: "#66a3ff",
+    opacity: 0.8,
+  },
   buttonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "500",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   link: {
     marginTop: 16,
