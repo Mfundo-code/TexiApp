@@ -65,7 +65,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'texiapp_db',          # New DB name
         'USER': 'texiapp_user',         # New DB user
-        'PASSWORD': 'YourStrongPassword',  # Strong password
+        'PASSWORD': 'Mfundo@1995',  # Strong password
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -126,6 +126,6 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'mfundoknox@gmail.com'
-EMAIL_HOST_PASSWORD = 'wqsdayocqqyofrns'  # Your app password
+EMAIL_HOST_PASSWORD = 'wqsdayocqqyofrns'  
 DEFAULT_FROM_EMAIL = 'findtaxi2025@gmail.com'
 
