@@ -8,11 +8,10 @@ SECRET_KEY = 'django-insecure-4mn8h=4o_uwlc6w(j0e4@9l$d35qd*0^yyw7@#xe0kq*boo!o9
 DEBUG = False  # Must be False in production
 
 ALLOWED_HOSTS = [
-    'Mfundoknox.pythonanywhere.com',  
-    '127.0.0.1',
+    '164.68.125.31',       # Contabo VPS IP
     'findtexi.com', 
-    'www.findtexi.com', 
-    'webapp-2640952.pythonanywhere.com'    
+    'www.findtexi.com',
+    'localhost',
 ]
 
 
@@ -64,11 +63,11 @@ WSGI_APPLICATION = 'TexiBackend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'Mfundoknox$texiapp_db',
-        'USER': 'Mfundoknox$texiapp_user',
-        'PASSWORD': 'Mfundo@1995',
-        'HOST': 'Mfundoknox-4625.postgres.pythonanywhere-services.com',  # Notice the numbers
-        'PORT': '14625',  # Your specific port
+        'NAME': 'texiapp_db',          # New DB name
+        'USER': 'texiapp_user',         # New DB user
+        'PASSWORD': 'YourStrongPassword',  # Strong password
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -95,7 +94,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
