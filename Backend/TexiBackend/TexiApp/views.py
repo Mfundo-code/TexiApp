@@ -1,6 +1,7 @@
 import random
 from datetime import timedelta
-
+from django.shortcuts import render
+from django.views import View
 from django.contrib.auth import authenticate, logout, get_user_model
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -22,6 +23,15 @@ from .serializers import (
     PostSerializer, CreatePostSerializer, CommentSerializer,
     CreateCommentSerializer,
 )
+
+class LandingPageView(View):
+    def get(self, request):
+        context = {
+            'release_date': 'June 01, 2025',
+            'creator': 'Mfundo',
+            'current_year': timezone.now().year
+        }
+        return render(request, 'index.html', context)
 
 
 # User Registration (with email confirmation)
